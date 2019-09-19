@@ -16,21 +16,28 @@ namespace NuGetGallery
     {
         private readonly HttpClient _httpClient;
         private readonly IEntityRepository<User> _users;
+        private readonly IFeatureFlagService _features;
         private readonly ILogger<GravatarProxyService> _logger;
 
         public GravatarProxyService(
             HttpClient httpClient,
             IEntityRepository<User> users,
+            IFeatureFlagService features,
             ILogger<GravatarProxyService> logger)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _users = users ?? throw new ArgumentNullException(nameof(users));
+            _features = features ?? throw new ArgumentNullException(nameof(features));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<GravatarProxyResult> GetAvatarOrNull(string username, int imageSize)
         {
-            // TODO Check feature flag.
+            if (!_features.IsGravatarProxyEnabled())
+            {
+                return null;
+            }
+
             var user = _users.GetAll().FirstOrDefault(u => u.Username == username);
             if (user == null)
             {
