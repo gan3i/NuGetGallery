@@ -4,19 +4,16 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using NuGet.Services.Entities;
-using Microsoft.Web.Helpers;
-using System.Net.Http;
 using NuGetGallery.Helpers;
 
 namespace NuGetGallery
 {
     public class GravatarProxyService : IGravatarProxyService
     {
-        private const string PngExtension = "png";
-
         private readonly HttpClient _httpClient;
         private readonly IEntityRepository<User> _users;
         private readonly ILogger<GravatarProxyService> _logger;
@@ -31,8 +28,9 @@ namespace NuGetGallery
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<Stream> GetProfilePictureOrNull(string username, int imageSize)
+        public async Task<GravatarProxyResult> GetAvatarOrNull(string username, int imageSize)
         {
+            // TODO Check feature flag.
             var user = _users.GetAll().FirstOrDefault(u => u.Username == username);
             if (user == null)
             {
@@ -44,7 +42,13 @@ namespace NuGetGallery
             {
                 var url = GravatarHelper.Url(user.EmailAddress ?? user.UnconfirmedEmailAddress, imageSize);
 
-                return await _httpClient.GetStreamAsync(url);
+                // The response will be disposed when the caller disposes the content stream.
+                var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+
+                var contentType = response.Content.Headers.ContentType.MediaType;
+                var contentStream = await response.Content.ReadAsStreamAsync();
+
+                return new GravatarProxyResult(contentStream, contentType);
             }
             catch (Exception e)
             {

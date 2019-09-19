@@ -608,7 +608,7 @@ namespace NuGetGallery
                 routeValues: new RouteValueDictionary
                 {
                     { "accountName", accountName },
-                    //{ "imageSize", imageSize },
+                    { "imageSize", imageSize },
                 });
         }
 

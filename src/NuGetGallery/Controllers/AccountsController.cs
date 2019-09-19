@@ -3,16 +3,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web;
-using System.Web.Http.Results;
 using System.Web.Mvc;
-using Microsoft.Web.Helpers;
+using System.Web.UI;
 using NuGet.Services.Entities;
 using NuGet.Services.Messaging.Email;
 using NuGetGallery.Areas.Admin.ViewModels;
@@ -632,17 +628,21 @@ namespace NuGetGallery
         }
 
         [HttpGet]
+        [OutputCache(
+            Duration = GalleryConstants.GravatarCacheDurationSeconds,
+            Location = OutputCacheLocation.Downstream,
+            VaryByParam = "imageSize")]
         public async Task<ActionResult> GetAvatar(
             string accountName,
             int? imageSize = GalleryConstants.GravatarImageSize)
         {
-            var picture = await GravatarProxy.GetProfilePictureOrNull(accountName, imageSize ?? GalleryConstants.GravatarImageSize);
-            if (picture == null)
+            var result = await GravatarProxy.GetAvatarOrNull(accountName, imageSize ?? GalleryConstants.GravatarImageSize);
+            if (result == null)
             {
                 return HttpNotFound();
             }
 
-            return File(picture, "image/png");
+            return File(result.AvatarStream, result.ContentType);
         }
 
         private bool CanManageCertificates(User currentUser, User account)

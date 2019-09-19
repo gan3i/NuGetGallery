@@ -12,7 +12,7 @@ namespace NuGetGallery.Helpers
 
         public static string Url(string email, int size)
         {
-            // The maximum Gravatar size is 512 pixels.
+            // The maximum allowed Gravatar size is 512 pixels.
             if (size > 512)
             {
                 size = 512;
@@ -30,7 +30,7 @@ namespace NuGetGallery.Helpers
 
         public static HtmlString Image(string email, int size, object attributes = null)
         {
-            // The maximum Gravatar size is 512 pixels.
+            // The maximum allowed Gravatar size is 512 pixels.
             if (size > 512)
             {
                 size = 512;
