@@ -14,7 +14,7 @@
         <aside class="col-md-3 col-md-push-9 profile-details">
             @ViewHelpers.GravatarImage(
                 Url,
-                Model.EmailAddress,
+                Model.EmailAddress ?? Model.UnconfirmedEmailAddress,
                 Model.Username,
                 GalleryConstants.GravatarImageSizeLarge,
                 Features.IsGravatarProxyEnabled(),
