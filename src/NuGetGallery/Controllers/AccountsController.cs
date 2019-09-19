@@ -3,11 +3,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web;
+using System.Web.Http.Results;
 using System.Web.Mvc;
+using Microsoft.Web.Helpers;
 using NuGet.Services.Entities;
 using NuGet.Services.Messaging.Email;
 using NuGetGallery.Areas.Admin.ViewModels;
@@ -54,6 +59,8 @@ namespace NuGetGallery
 
         protected IIconUrlProvider IconUrlProvider { get; }
 
+        protected IGravatarProxyService GravatarProxy { get; }
+
         private readonly DeleteAccountListPackageItemViewModelFactory _deleteAccountListPackageItemViewModelFactory;
 
         public AccountsController(
@@ -67,7 +74,8 @@ namespace NuGetGallery
             IContentObjectService contentObjectService,
             IMessageServiceConfiguration messageServiceConfiguration,
             IDeleteAccountService deleteAccountService,
-            IIconUrlProvider iconUrlProvider)
+            IIconUrlProvider iconUrlProvider,
+            IGravatarProxyService gravatarProxy)
         {
             AuthenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService));
             PackageService = packageService ?? throw new ArgumentNullException(nameof(packageService));
@@ -80,6 +88,7 @@ namespace NuGetGallery
             MessageServiceConfiguration = messageServiceConfiguration ?? throw new ArgumentNullException(nameof(messageServiceConfiguration));
             DeleteAccountService = deleteAccountService ?? throw new ArgumentNullException(nameof(deleteAccountService));
             IconUrlProvider = iconUrlProvider ?? throw new ArgumentNullException(nameof(iconUrlProvider));
+            GravatarProxy = gravatarProxy ?? throw new ArgumentNullException(nameof(gravatarProxy));
 
             _deleteAccountListPackageItemViewModelFactory = new DeleteAccountListPackageItemViewModelFactory(PackageService, IconUrlProvider);
         }
@@ -620,6 +629,20 @@ namespace NuGetGallery
                 });
 
             return Json(HttpStatusCode.OK, certificates, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpGet]
+        public async Task<ActionResult> GetAvatar(
+            string accountName,
+            int? imageSize = GalleryConstants.GravatarImageSize)
+        {
+            var picture = await GravatarProxy.GetProfilePictureOrNull(accountName, imageSize ?? GalleryConstants.GravatarImageSize);
+            if (picture == null)
+            {
+                return HttpNotFound();
+            }
+
+            return File(picture, "image/png");
         }
 
         private bool CanManageCertificates(User currentUser, User account)

@@ -31,7 +31,8 @@ namespace NuGetGallery
             IDeleteAccountService deleteAccountService,
             IContentObjectService contentObjectService,
             IMessageServiceConfiguration messageServiceConfiguration,
-            IIconUrlProvider iconUrlProvider)
+            IIconUrlProvider iconUrlProvider,
+            IGravatarProxyService gravatarProxy)
             : base(
                   authService,
                   packageService,
@@ -43,7 +44,8 @@ namespace NuGetGallery
                   contentObjectService,
                   messageServiceConfiguration,
                   deleteAccountService,
-                  iconUrlProvider)
+                  iconUrlProvider,
+                  gravatarProxy)
         {
         }
 

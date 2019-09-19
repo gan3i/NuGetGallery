@@ -206,12 +206,12 @@
     }
 }
 
-@helper GravatarImage(string email, string username, int size)
+@helper GravatarImage(UrlHelper url, string username, int size)
 {
-    @GravatarImage(email, username, size, responsive: false);
+    @GravatarImage(url, username, size, responsive: false);
 }
 
-@helper GravatarImage(string email, string username, int size, bool responsive)
+@helper GravatarImage(UrlHelper url, string username, int size, bool responsive)
 {
     var classAttribute = responsive ? "owner-image img-responsive" : "owner-image";
 
@@ -219,16 +219,13 @@
     var imageSize = size * 2;
     var elementSize = size;
 
-    @GravatarHelper.Image(
-        email,
-        imageSize,
-        attributes: new
-        {
-            width = elementSize,
-            height = elementSize,
-            title = username,
-            @class = classAttribute
-        });
+    <img
+         src="@url.Avatar(username, size)"
+         class="@classAttribute"
+         height="@size"
+         width="@size"
+         title="@username"
+         alt="gravatar"/>
 }
 
 @helper UserLinkWithIcon(UrlHelper url, BasicUserViewModel user)
