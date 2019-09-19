@@ -20,6 +20,8 @@ namespace NuGetGallery
     public class OrganizationsController
         : AccountsController<Organization, OrganizationAccountViewModel>
     {
+        private readonly IFeatureFlagService _features;
+
         public OrganizationsController(
             AuthenticationService authService,
             IMessageService messageService,
@@ -32,6 +34,7 @@ namespace NuGetGallery
             IContentObjectService contentObjectService,
             IMessageServiceConfiguration messageServiceConfiguration,
             IIconUrlProvider iconUrlProvider,
+            IFeatureFlagService features,
             IGravatarProxyService gravatarProxy)
             : base(
                   authService,
@@ -47,6 +50,7 @@ namespace NuGetGallery
                   iconUrlProvider,
                   gravatarProxy)
         {
+            _features = features ?? throw new ArgumentNullException(nameof(features));
         }
 
         public override string AccountAction => nameof(ManageOrganization);
@@ -160,7 +164,7 @@ namespace NuGetGallery
                     request.IsAdmin);
                 await MessageService.SendMessageAsync(organizationMembershipRequestInitiatedMessage);
 
-                return Json(new OrganizationMemberViewModel(request));
+                return Json(new OrganizationMemberViewModel(request, GetGravatarUrl(request.NewMember)));
             }
             catch (EntityException e)
             {
@@ -318,7 +322,7 @@ namespace NuGetGallery
                 var emailMessage = new OrganizationMemberUpdatedMessage(MessageServiceConfiguration, account, membership);
                 await MessageService.SendMessageAsync(emailMessage);
 
-                return Json(new OrganizationMemberViewModel(membership));
+                return Json(new OrganizationMemberViewModel(membership, GetGravatarUrl(membership.Member)));
             }
             catch (EntityException e)
             {
@@ -372,7 +376,22 @@ namespace NuGetGallery
 
         private DeleteOrganizationViewModel GetDeleteOrganizationViewModel(Organization account)
         {
-            return new DeleteOrganizationViewModel(account, base.GetCurrentUser(), GetOwnedPackagesViewModels(account));
+            var currentUser = base.GetCurrentUser();
+
+            var members = account.Members
+                .Select(m => new OrganizationMemberViewModel(m, GetGravatarUrl(m.Member)))
+                .ToList();
+
+            var additionalMembers = account.Members
+                .Where(m => !m.Member.MatchesUser(currentUser))
+                .Select(m => new OrganizationMemberViewModel(m, GetGravatarUrl(m.Member)))
+                .ToList();
+
+            return new DeleteOrganizationViewModel(
+                account,
+                GetOwnedPackagesViewModels(account),
+                members,
+                additionalMembers);
         }
 
         [HttpPost]
@@ -427,8 +446,8 @@ namespace NuGetGallery
             base.UpdateAccountViewModel(account, model);
 
             model.Members =
-                account.Members.Select(m => new OrganizationMemberViewModel(m))
-                .Concat(account.MemberRequests.Select(m => new OrganizationMemberViewModel(m)));
+                account.Members.Select(m => new OrganizationMemberViewModel(m, GetGravatarUrl(m.Member)))
+                .Concat(account.MemberRequests.Select(m => new OrganizationMemberViewModel(m, GetGravatarUrl(m.NewMember))));
 
             model.RequiresTenant = account.IsRestrictedToOrganizationTenantPolicy();
 
@@ -440,6 +459,13 @@ namespace NuGetGallery
         protected override RouteUrlTemplate<string> GetDeleteCertificateForAccountTemplate(string accountName)
         {
             return Url.DeleteOrganizationCertificateTemplate(accountName);
+        }
+
+        private string GetGravatarUrl(User user)
+        {
+            return _features.IsGravatarProxyEnabled()
+                ? Url.Avatar(user.Username, GalleryConstants.GravatarElementSize)
+                : GravatarHelper.Url(user.EmailAddress, GalleryConstants.GravatarElementSize);;
         }
     }
 }
