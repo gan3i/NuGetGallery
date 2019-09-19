@@ -444,7 +444,7 @@ namespace NuGetGallery
 
         public class TheAddMemberAction : AccountsControllerTestContainer
         {
-            private const string defaultMemberName = "member";
+            private const string DefaultMemberName = "member";
 
             public static IEnumerable<object[]> AllowedCurrentUsers_Data
             {
@@ -524,7 +524,7 @@ namespace NuGetGallery
                 Assert.IsType<JsonResult>(result);
                 Assert.Equal("error", result.Data);
 
-                GetMock<IUserService>().Verify(s => s.AddMembershipRequestAsync(account, defaultMemberName, isAdmin), Times.Once);
+                GetMock<IUserService>().Verify(s => s.AddMembershipRequestAsync(account, DefaultMemberName, isAdmin), Times.Once);
             }
 
             [Theory]
@@ -541,12 +541,14 @@ namespace NuGetGallery
                             msg =>
                             msg.Organization == account
                             && msg.RequestingUser == controller.GetCurrentUser()
-                            && msg.PendingUser == It.Is<User>(u => u.Username == defaultMemberName)
+                            && msg.PendingUser == It.Is<User>(u => u.Username == DefaultMemberName)
                             && msg.IsAdmin == isAdmin),
                         false,
                         false))
                     .Returns(Task.CompletedTask)
                     .Verifiable();
+
+                account.EmailAddress = "hello@test.example";
 
                 // Act
                 var result = await InvokeAddMember(controller, account, getCurrentUser, isAdmin: isAdmin);
@@ -556,7 +558,7 @@ namespace NuGetGallery
                         It.Is<OrganizationMembershipRequestMessage>(
                             msg =>
                             msg.Organization == account
-                            && msg.NewUser == It.Is<User>(u => u.Username == defaultMemberName)
+                            && msg.NewUser == It.Is<User>(u => u.Username == DefaultMemberName)
                             && msg.AdminUser == controller.GetCurrentUser()
                             && msg.IsAdmin == isAdmin),
                         false,
@@ -569,11 +571,11 @@ namespace NuGetGallery
                 Assert.IsType<JsonResult>(result);
 
                 dynamic data = result.Data;
-                Assert.Equal(defaultMemberName, data.Username);
+                Assert.Equal(DefaultMemberName, data.Username);
                 Assert.Equal(isAdmin, data.IsAdmin);
                 Assert.Equal(true, data.Pending);
 
-                GetMock<IUserService>().Verify(s => s.AddMembershipRequestAsync(account, defaultMemberName, isAdmin), Times.Once);
+                GetMock<IUserService>().Verify(s => s.AddMembershipRequestAsync(account, DefaultMemberName, isAdmin), Times.Once);
                 messageService
                     .Verify(s => s.SendMessageAsync(
                         It.IsAny<OrganizationMembershipRequestInitiatedMessage>(),
@@ -585,7 +587,7 @@ namespace NuGetGallery
                 OrganizationsController controller,
                 Organization account,
                 Func<Fakes, User> getCurrentUser,
-                string memberName = defaultMemberName,
+                string memberName = DefaultMemberName,
                 bool isAdmin = false,
                 EntityException exception = null)
             {
@@ -609,6 +611,9 @@ namespace NuGetGallery
                         IsAdmin = isAdmin,
                         ConfirmationToken = "token"
                     };
+
+                    request.NewMember.EmailAddress = $"{memberName}@test.example";
+
                     setup.Returns(Task.FromResult(request)).Verifiable();
                 }
 

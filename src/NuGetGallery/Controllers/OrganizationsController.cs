@@ -465,7 +465,7 @@ namespace NuGetGallery
         {
             return _features.IsGravatarProxyEnabled()
                 ? Url.Avatar(user.Username, GalleryConstants.GravatarElementSize)
-                : GravatarHelper.Url(user.EmailAddress, GalleryConstants.GravatarElementSize);;
+                : GravatarHelper.Url(user.EmailAddress, GalleryConstants.GravatarElementSize);
         }
     }
 }
