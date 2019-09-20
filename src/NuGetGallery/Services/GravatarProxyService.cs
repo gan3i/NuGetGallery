@@ -31,7 +31,7 @@ namespace NuGetGallery
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<GravatarProxyResult> GetAvatarOrNull(string username, int imageSize)
+        public async Task<GravatarProxyResult> GetAvatarOrNullAsync(string username, int imageSize)
         {
             if (!_features.IsGravatarProxyEnabled())
             {

@@ -19,6 +19,6 @@ namespace NuGetGallery
         /// <returns>
         /// The proxy result, or <see langword="null"/> if the username does not exist.
         /// </returns>
-        Task<GravatarProxyResult> GetAvatarOrNull(string username, int imageSize);
+        Task<GravatarProxyResult> GetAvatarOrNullAsync(string username, int imageSize);
     }
 }

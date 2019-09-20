@@ -7,7 +7,7 @@ using System.IO;
 namespace NuGetGallery
 {
     /// <summary>
-    /// The result of <see cref="IGravatarProxyService.GetAvatarOrNull(string, int)"/>.
+    /// The result of <see cref="IGravatarProxyService.GetAvatarOrNullAsync(string, int)"/>.
     /// </summary>
     public class GravatarProxyResult
     {

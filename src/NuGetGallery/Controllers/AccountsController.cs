@@ -636,7 +636,7 @@ namespace NuGetGallery
             string accountName,
             int? imageSize = GalleryConstants.GravatarImageSize)
         {
-            var result = await GravatarProxy.GetAvatarOrNull(accountName, imageSize ?? GalleryConstants.GravatarImageSize);
+            var result = await GravatarProxy.GetAvatarOrNullAsync(accountName, imageSize ?? GalleryConstants.GravatarImageSize);
             if (result == null)
             {
                 return HttpNotFound();

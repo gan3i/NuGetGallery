@@ -79,7 +79,7 @@ namespace NuGetGallery
                 .Setup(f => f.IsGravatarProxyEnabled())
                 .Returns(false);
 
-            var result = await _target.GetAvatarOrNull("Hello", 100);
+            var result = await _target.GetAvatarOrNullAsync("Hello", 100);
 
             Assert.Null(result);
 
@@ -95,7 +95,7 @@ namespace NuGetGallery
                 .Setup(f => f.IsGravatarProxyEnabled())
                 .Returns(true);
 
-            var result = await _target.GetAvatarOrNull("This is a nonexistent username", 100);
+            var result = await _target.GetAvatarOrNullAsync("This is a nonexistent username", 100);
 
             Assert.Null(result);
 
@@ -116,7 +116,7 @@ namespace NuGetGallery
             _messageHandler.AddHandler(UserGravatarUrl, message => _validGravatarResponse);
 
             // Act
-            var result = await _target.GetAvatarOrNull(User.Username, 100);
+            var result = await _target.GetAvatarOrNullAsync(User.Username, 100);
 
             // Assert
             Assert.NotNull(result);
@@ -142,7 +142,7 @@ namespace NuGetGallery
             _messageHandler.AddHandler(UserGravatarUrl, message => _validGravatarResponse);
 
             // Act
-            var result = await _target.GetAvatarOrNull(User.Username, 100);
+            var result = await _target.GetAvatarOrNullAsync(User.Username, 100);
 
             // Assert
             Assert.NotNull(result);
@@ -165,7 +165,7 @@ namespace NuGetGallery
             _messageHandler.AddHandler(UnconfirmedUserGravatarUrl, message => _validGravatarResponse);
 
             // Act
-            var result = await _target.GetAvatarOrNull(UnconfirmedUser.Username, 100);
+            var result = await _target.GetAvatarOrNullAsync(UnconfirmedUser.Username, 100);
 
             // Assert
             Assert.NotNull(result);
@@ -189,7 +189,7 @@ namespace NuGetGallery
             _messageHandler.AddHandler(UserGravatarUrlSize512, message => _validGravatarResponse);
 
             // Act
-            var result = await _target.GetAvatarOrNull(User.Username, 1000);
+            var result = await _target.GetAvatarOrNullAsync(User.Username, 1000);
 
             // Assert
             Assert.NotNull(result);
@@ -216,7 +216,7 @@ namespace NuGetGallery
             _messageHandler.AddHandler(UserGravatarUrlSize512, message => new HttpResponseMessage(statusCode));
 
             // Act
-            var result = await _target.GetAvatarOrNull(User.Username, 1000);
+            var result = await _target.GetAvatarOrNullAsync(User.Username, 1000);
 
             // Assert
             Assert.Null(result);
