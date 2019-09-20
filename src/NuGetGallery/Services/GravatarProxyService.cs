@@ -52,6 +52,8 @@ namespace NuGetGallery
                 // The response will be disposed when the caller disposes the content stream.
                 var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
 
+                response.EnsureSuccessStatusCode();
+
                 var contentType = response.Content.Headers.ContentType.MediaType;
                 var contentStream = await response.Content.ReadAsStreamAsync();
 
