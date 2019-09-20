@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 using Moq;
+using NuGet.ContentModel;
 using NuGet.Services.Entities;
 using NuGet.Services.Messaging.Email;
 using NuGetGallery.Areas.Admin.ViewModels;
@@ -1158,6 +1159,9 @@ namespace NuGetGallery
                 dynamic data = result.Data;
                 Assert.Equal(defaultMemberName, data.Username);
                 Assert.Equal(isAdmin, data.IsAdmin);
+                Asset.Equals(
+                    "https://secure.gravatar.com/avatar/a22526ad5b00a9a99b440ed239dbdbad?s=32&r=g&d=retro",
+                    data.GravatarUrl);
 
                 GetMock<IUserService>().Verify(s => s.UpdateMemberAsync(account, defaultMemberName, isAdmin), Times.Once);
 
@@ -1167,6 +1171,30 @@ namespace NuGetGallery
                        false,
                        false),
                        Times.Once);
+            }
+
+            [Theory]
+            [MemberData(nameof(AllowedCurrentUsers_IsAdmin_Data))]
+            public async Task ReturnsAvatarProxyUrl(Func<Fakes, User> getCurrentUser, bool isAdmin)
+            {
+                // Arrange
+	            GetMock<IFeatureFlagService>()
+                    .Setup(f => f.IsGravatarProxyEnabled())
+                    .Returns(true);
+                var controller = GetController();
+                var account = GetAccount(controller);
+
+                // Act
+                var result = await InvokeUpdateMember(controller, account, getCurrentUser, isAdmin: isAdmin);
+
+                // Assert
+                Assert.Equal(0, controller.Response.StatusCode);
+                Assert.IsType<JsonResult>(result);
+
+                dynamic data = result.Data;
+                Asset.Equals(
+                    $"/profiles/{data.Username}/avatar?imageSize=32",
+                    data.GravatarUrl);
             }
 
             private Task<JsonResult> InvokeUpdateMember(
@@ -1196,6 +1224,8 @@ namespace NuGetGallery
                         Member = new User(memberName),
                         IsAdmin = isAdmin
                     };
+
+                    membership.Member.EmailAddress = $"{memberName}@test.example";
                     setup.Returns(Task.FromResult(membership)).Verifiable();
                 }
 
