@@ -41,16 +41,23 @@ namespace NuGetGallery
         /// If the input uri is https => leave as is
         /// If the input uri is not a valid uri or not http/https => return false
         /// </summary>
-        public static bool TryPrepareUrlForRendering(string uriString, out string readyUriString)
+        public static bool TryPrepareUrlForRendering(string uriString, out string readyUriString, bool rewriteAllHttp = false)
         {
             Uri returnUri = null;
             readyUriString = null;
 
             if (Uri.TryCreate(uriString, UriKind.Absolute, out var uri))
             {
-                if (uri.IsHttpProtocol() && uri.IsDomainWithHttpsSupport())
+                if (uri.IsHttpProtocol())
                 {
-                    returnUri = uri.ToHttps();
+                    if (rewriteAllHttp || uri.IsDomainWithHttpsSupport())
+                    {
+                        returnUri = uri.ToHttps();
+                    }
+                    else
+                    {
+                        returnUri = uri;
+                    }
                 }
                 else if (uri.IsHttpsProtocol() || uri.IsHttpProtocol())
                 {
@@ -163,6 +170,12 @@ namespace NuGetGallery
                 if (packageDependencies.Flatten().Length > Int16.MaxValue)
                 {
                     throw new EntityException(ServicesStrings.NuGetPackagePropertyTooLong, "Dependencies", Int16.MaxValue);
+                }
+
+                // Verify there are no duplicate dependency groups
+                if (packageDependencies.Select(pd => pd.TargetFramework).Distinct().Count() != packageDependencies.Count)
+                {
+                    throw new EntityException(ServicesStrings.NuGetPackageDuplicateDependencyGroup);
                 }
             }
 

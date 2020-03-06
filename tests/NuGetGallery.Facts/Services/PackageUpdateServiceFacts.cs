@@ -60,41 +60,6 @@ namespace NuGetGallery.Services
                 await Assert.ThrowsAsync<InvalidOperationException>(async () => await service.MarkPackageListedAsync(package));
             }
 
-            public static IEnumerable<object[]> ThrowsWhenPackageIsLatest_Data
-            {
-                get
-                {
-                    foreach (var latestState in Enum.GetValues(typeof(PackageLatestState)).Cast<PackageLatestState>())
-                    {
-                        if (latestState == PackageLatestState.Not)
-                        {
-                            continue;
-                        }
-
-                        yield return MemberDataHelper.AsData(latestState);
-                    }
-                }
-            }
-
-            [Theory]
-            [MemberData(nameof(ThrowsWhenPackageIsLatest_Data))]
-            public async Task ThrowsWhenPackageIsLatest(PackageLatestState latestState)
-            {
-                var packageRegistration = new PackageRegistration { Id = "theId" };
-                var package = new Package
-                {
-                    Version = "1.0",
-                    PackageRegistration = packageRegistration,
-                    Listed = false
-                };
-
-                SetLatestOfPackage(package, latestState);
-
-                var service = Get<PackageUpdateService>();
-
-                await Assert.ThrowsAsync<InvalidOperationException>(async () => await service.MarkPackageListedAsync(package));
-            }
-
             [Fact]
             public async Task WritesAnAuditRecord()
             {
@@ -218,15 +183,14 @@ namespace NuGetGallery.Services
         public class TheUpdatePackagesAsyncMethod : TestContainer
         {
             private readonly Mock<IEntitiesContext> _mockEntitiesContext;
-            private readonly Mock<IPackageService> _mockPackageService;
             private readonly Mock<IDatabase> _mockDatabase;
+            private readonly Mock<IIndexingService> _mockIndexingService;
 
             public TheUpdatePackagesAsyncMethod()
             {
-                _mockEntitiesContext = GetMock<IEntitiesContext>();
-                _mockPackageService = GetMock<IPackageService>();
-
+                _mockIndexingService = GetMock<IIndexingService>();
                 _mockDatabase = GetMock<IDatabase>();
+                _mockEntitiesContext = GetMock<IEntitiesContext>();
                 _mockEntitiesContext
                     .Setup(x => x.GetDatabase())
                     .Returns(_mockDatabase.Object)
@@ -279,6 +243,20 @@ namespace NuGetGallery.Services
                 await SetupAndInvokeMethod(packages, true);
 
                 _mockDatabase.Verify();
+                _mockIndexingService.Verify();
+            }
+
+            [Theory]
+            [MemberData(nameof(PackageCombinations_Data))]
+            public async Task SuccessfullyUpdatesPackagesWithMultipleRegistrations(PackageLatestState latestState, bool listed)
+            {
+                var firstPackages = GetPackagesForTest(latestState, listed, 0);
+                var secondPackages = GetPackagesForTest(latestState, listed, 1);
+                var allPackages = firstPackages.Concat(secondPackages).ToList();
+                await SetupAndInvokeMethod(allPackages, true);
+
+                _mockDatabase.Verify();
+                _mockIndexingService.Verify();
             }
 
             private Task SetupAndInvokeMethod(IReadOnlyList<Package> packages, bool sqlQuerySucceeds)
@@ -303,15 +281,22 @@ WHERE [Key] IN ({packageKeyStrings})";
                     .Returns(Task.FromResult(sqlQuerySucceeds ? packages.Count() * 2 : 0))
                     .Verifiable();
 
+                foreach (var registration in packages.Select(p => p.PackageRegistration).Distinct())
+                {
+                    _mockIndexingService
+                        .Setup(x => x.UpdatePackage(It.Is<Package>(p => p.PackageRegistration == registration)))
+                        .Verifiable();
+                }
+
                 return Get<PackageUpdateService>()
                     .UpdatePackagesAsync(packages);
             }
 
-            private IReadOnlyList<Package> GetPackagesForTest(PackageLatestState latestState, bool listed)
+            private IReadOnlyList<Package> GetPackagesForTest(PackageLatestState latestState, bool listed, int number = 0)
             {
                 var registration = new PackageRegistration
                 {
-                    Id = "updatePackagesAsyncTest"
+                    Id = "updatePackagesAsyncTest" + number
                 };
 
                 Package unselectedPackage;
@@ -319,7 +304,7 @@ WHERE [Key] IN ({packageKeyStrings})";
                 {
                     unselectedPackage = new Package
                     {
-                        Key = 1,
+                        Key = 1 + number * 100,
                         Version = "3.0.0",
                         PackageRegistration = registration,
                         IsLatest = true,
@@ -333,7 +318,7 @@ WHERE [Key] IN ({packageKeyStrings})";
                 {
                     unselectedPackage = new Package
                     {
-                        Key = 1,
+                        Key = 1 + number * 100,
                         Version = "1.0.0",
                         PackageRegistration = registration,
                         IsLatest = false,
@@ -348,7 +333,7 @@ WHERE [Key] IN ({packageKeyStrings})";
 
                 var selectedListedPackage = new Package
                 {
-                    Key = 2,
+                    Key = 2 + number * 100,
                     Version = "2.0.0",
                     PackageRegistration = registration,
                     Listed = true
@@ -358,7 +343,7 @@ WHERE [Key] IN ({packageKeyStrings})";
 
                 var selectedUnlistedPackage = new Package
                 {
-                    Key = 3,
+                    Key = 3 + number * 100,
                     Version = "2.1.0",
                     PackageRegistration = registration,
                     Listed = false
@@ -368,7 +353,7 @@ WHERE [Key] IN ({packageKeyStrings})";
 
                 var selectedMaybeLatestPackage = new Package
                 {
-                    Key = 4,
+                    Key = 4 + number * 100,
                     Version = "2.5.0",
                     PackageRegistration = registration,
                     Listed = listed

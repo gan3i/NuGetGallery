@@ -18,8 +18,10 @@ namespace NuGetGallery.Auditing
         public DateTime Created { get; }
         public DateTime? Expires { get; }
         public DateTime? LastUsed { get; }
+        public string TenantId { get; }
+        public string RevocationSource { get; }
 
-        public CredentialAuditRecord(Credential credential, bool removed)
+        public CredentialAuditRecord(Credential credential, bool removedOrRevoked)
         {
             if (credential == null)
             {
@@ -30,9 +32,14 @@ namespace NuGetGallery.Auditing
             Type = credential.Type;
             Description = credential.Description;
             Identity = credential.Identity;
+            TenantId = credential.TenantId;
 
-            // Track the value for credentials that are definitely revocable (API Key, etc.) and have been removed
-            if (removed)
+            // Track the value for credentials that are external (object id) or definitely revocable (API Key, etc.) and have been removed
+            if (credential.IsExternal())
+            {
+                Value = credential.Value;
+            }
+            else if (removedOrRevoked)
             {
                 if (Type == null)
                 {
@@ -56,6 +63,12 @@ namespace NuGetGallery.Auditing
                 var ownerScope = scope.Owner?.Username;
                 Scopes.Add(new ScopeAuditRecord(ownerScope, scope.Subject, scope.AllowedAction));
             }
+        }
+
+        public CredentialAuditRecord(Credential credential, bool removedOrRevoked, string revocationSource)
+                : this(credential, removedOrRevoked)
+        {
+            RevocationSource = revocationSource;
         }
     }
 }

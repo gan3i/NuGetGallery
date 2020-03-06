@@ -24,9 +24,10 @@ namespace NuGetGallery
         public const int GravatarElementSize = 32;
         public const int GravatarImageSize = GravatarElementSize * 2;
         public const int GravatarImageSizeLarge = 332;
+        public const int GravatarCacheDurationSeconds = 300;
 
         public const int MaxEmailSubjectLength = 255;
-        internal static readonly NuGetVersion MaxSupportedMinClientVersion = new NuGetVersion("4.1.0.0");
+        internal static readonly NuGetVersion MaxSupportedMinClientVersion = new NuGetVersion("5.3.0.0");
         public const string PackageFileDownloadUriTemplate = "packages/{0}/{1}/download";
 
         public const string ReadMeFileSavePathTemplateActive = "active/{0}/{1}{2}";
@@ -44,6 +45,7 @@ namespace NuGetGallery
         public static readonly string ReturnUrlViewDataKey = "ReturnUrl";
         public static readonly string ReturnUrlMessageViewDataKey = "ReturnUrlMessage";
         public const string AbsoluteLatestUrlString = "absoluteLatest";
+        public const string AskUserToEnable2FA = "AskUserToEnable2FA";
 
         public const string UrlValidationRegEx = @"(https?):\/\/[^ ""]+$";
         public const string UrlValidationErrorMessage = "This doesn't appear to be a valid HTTP/HTTPS URL";

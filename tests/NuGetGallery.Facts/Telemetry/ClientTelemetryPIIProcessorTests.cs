@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Routing;
@@ -13,7 +14,7 @@ using Xunit;
 
 namespace NuGetGallery.Telemetry
 {
-    public class ClientTelemetryPIIProcessorTests 
+    public class ClientTelemetryPIIProcessorTests
     {
         private RouteCollection _currentRoutes;
 
@@ -35,6 +36,20 @@ namespace NuGetGallery.Telemetry
 
             // Act
             piiProcessor.Process(null);
+        }
+
+        [Fact]
+        public void NullRequestTelemetryUrlDoesNotThrow()
+        {
+            // Arange
+            var piiProcessor = CreatePIIProcessor();
+            var requestTelemetry = new RequestTelemetry
+            {
+                Url = null
+            };
+
+            // Act
+            piiProcessor.Process(requestTelemetry);
         }
 
         [Theory]
@@ -97,9 +112,105 @@ namespace NuGetGallery.Telemetry
             Assert.Empty(piiUrlRoutes.Except(generatorRoutes));
         }
 
+        [Theory]
+        [MemberData(nameof(ObfuscatesGravatarUrlData))]
+        public void ObfuscatesGravatarUrl(DependencyTelemetry input, string expectedData, string expectedName)
+        {
+            var target = CreatePIIProcessor();
+
+            target.Process(input);
+
+            Assert.Equal(expectedData, input.Data);
+            Assert.Equal(expectedName, input.Name);
+        }
+
+        public static IEnumerable<object[]> ObfuscatesGravatarUrlData()
+        {
+            object[] ObfuscatesGravatarUrlData(
+                string inputType = "HTTP",
+                string inputData = null,
+                string inputName = null,
+                string expectedData = null,
+                string expectedName = null)
+            {
+                return new object[]
+                {
+                    new DependencyTelemetry
+                    {
+                        Type = inputType,
+                        Data = inputData,
+                        Name = inputName,
+                    },
+
+                    expectedData,
+                    expectedName,
+                };
+            }
+
+            // Hashed email addresses are obfuscated from Gravatar URLs.
+            yield return ObfuscatesGravatarUrlData(
+                inputData: "http://gravatar.com/avatar/abc",
+                inputName: "GET /avatar/abc",
+                expectedData: "http://gravatar.com/avatar/Obfuscated",
+                expectedName: "GET /avatar/Obfuscated");
+            yield return ObfuscatesGravatarUrlData(
+                inputData: "https://secure.gravatar.com/avatar/abc",
+                inputName: "GET /avatar/abc",
+                expectedData: "https://secure.gravatar.com/avatar/Obfuscated",
+                expectedName: "GET /avatar/Obfuscated");
+            yield return ObfuscatesGravatarUrlData(
+                inputData: "https://secure.gravatar.com:443/avatar/abc",
+                inputName: "GET /avatar/abc",
+                expectedData: "https://secure.gravatar.com/avatar/Obfuscated",
+                expectedName: "GET /avatar/Obfuscated");
+            yield return ObfuscatesGravatarUrlData(
+                inputData: "https://gravatar.com/avatar/abc?s=512&d=retro",
+                inputName: "GET /avatar/abc",
+                expectedData: "https://gravatar.com/avatar/Obfuscated?s=512&d=retro",
+                expectedName: "GET /avatar/Obfuscated");
+            yield return ObfuscatesGravatarUrlData(
+                inputData: "https://gravatar.com/avatar/weird/url/but/whatever",
+                inputName: "GET /avatar/abc",
+                expectedData: "https://gravatar.com/avatar/Obfuscated",
+                expectedName: "GET /avatar/Obfuscated");
+
+            // Casing of the telemetry type should not matter.
+            yield return ObfuscatesGravatarUrlData(
+                inputType: "Http",
+                inputData: "http://gravatar.com/avatar/abc",
+                inputName: "GET /avatar/abc",
+                expectedData: "http://gravatar.com/avatar/Obfuscated",
+                expectedName: "GET /avatar/Obfuscated");
+
+            // Unknown routes and invalid URLs are ignored
+            yield return ObfuscatesGravatarUrlData(
+                inputData: "https://gravatar.com/unknown/route",
+                inputName: "GET /unknown/route",
+                expectedData: "https://gravatar.com/unknown/route",
+                expectedName: "GET /unknown/route");
+            yield return ObfuscatesGravatarUrlData(
+                inputData: "https://example.test/avatar/abc",
+                inputName: "GET /avatar/abc",
+                expectedData: "https://example.test/avatar/abc",
+                expectedName: "GET /avatar/abc");
+            yield return ObfuscatesGravatarUrlData(
+                inputData: "avatar/abc",
+                inputName: "GET /avatar/abc",
+                expectedData: "avatar/abc",
+                expectedName: "GET /avatar/abc");
+
+            // The type must be "HTTP" for the data to be obfuscated
+            yield return ObfuscatesGravatarUrlData(
+                inputType: "Blob",
+                inputData: "http://gravatar.com/avatar/abc",
+                inputName: "GET /avatar/abc",
+                expectedData: "http://gravatar.com/avatar/abc",
+                expectedName: "GET /avatar/abc");
+        }
+
         private ClientTelemetryPIIProcessor CreatePIIProcessor(string url = "")
         {
-            return new TestClientTelemetryPIIProcessor(new TestProcessorNext(), url );
+            return new TestClientTelemetryPIIProcessor(new TestProcessorNext(), url);
         }
 
         private class TestProcessorNext : ITelemetryProcessor
@@ -113,17 +224,16 @@ namespace NuGetGallery.Telemetry
         {
             private string _url = string.Empty;
 
-            public TestClientTelemetryPIIProcessor(ITelemetryProcessor next, string url) : base (next)
+            public TestClientTelemetryPIIProcessor(ITelemetryProcessor next, string url) : base(next)
             {
                 _url = url;
             }
 
-            public override Route GetCurrentRoute()
+            protected override Route GetCurrentRoute()
             {
                 var handler = new Mock<IRouteHandler>();
                 return new Route(_url, handler.Object);
             }
-
         }
 
         private List<string> GetPIIOperationsFromRoute()
@@ -132,7 +242,8 @@ namespace NuGetGallery.Telemetry
             {
                 Route webRoute = r as Route;
                 return webRoute != null ? IsPIIUrl(webRoute.Url.ToString()) : false;
-            }).Select((r) => {
+            }).Select((r) =>
+            {
                 var dd = ((Route)r).Defaults;
                 return $"{dd["controller"]}/{dd["action"]}";
             }).Distinct().ToList();
@@ -191,6 +302,7 @@ namespace NuGetGallery.Telemetry
                 yield return new string[] { "packages/{id}/owners/{username}/reject/{token}", $"https://localhost/packages/pack1/owners/{user}/reject/sometoken", "https://localhost/packages/pack1/owners/ObfuscatedUserName/reject/ObfuscatedToken" };
                 yield return new string[] { "packages/{id}/required-signer/{username}", $"https://localhost/packages/pack1/required-signer/{user}", "https://localhost/packages/pack1/required-signer/ObfuscatedUserName" };
                 yield return new string[] { "profiles/{username}", $"https://localhost/profiles/{user}", "https://localhost/profiles/ObfuscatedUserName" };
+                yield return new string[] { "profiles/{accountName}/avatar", $"https://localhost/profiles/{user}/avatar", "https://localhost/profiles/ObfuscatedUserName/avatar" };
             }
 
             yield return new string[] { "account/transform/cancel/{token}", $"https://localhost/account/transform/cancel/sometoken", "https://localhost/account/transform/cancel/ObfuscatedToken" };
@@ -198,7 +310,7 @@ namespace NuGetGallery.Telemetry
 
         public static List<string> GenerateUserNames()
         {
-            return new List<string>{ "user1", "user.1", "user_1", "user-1"};
+            return new List<string> { "user1", "user.1", "user_1", "user-1" };
         }
     }
 }

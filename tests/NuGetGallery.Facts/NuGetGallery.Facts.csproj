@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>NuGetGallery</RootNamespace>
     <AssemblyName>NuGetGallery.Facts</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFrameworkProfile />
@@ -60,8 +60,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppConfigIsCorrectlyApplied.cs" />
+    <Compile Include="App_Start\DefaultDependenciesModuleFacts.cs" />
     <Compile Include="App_Start\StorageDependentFacts.cs" />
     <Compile Include="App_Start\RuntimeServiceProviderTests.cs" />
+    <Compile Include="Areas\Admin\Controllers\ApiKeysControllerFacts.cs" />
     <Compile Include="Areas\Admin\Controllers\DeleteAccountControllerFacts.cs" />
     <Compile Include="Areas\Admin\Controllers\DeleteControllerFacts.cs" />
     <Compile Include="Areas\Admin\Controllers\LockPackageControllerFacts.cs" />
@@ -77,7 +79,10 @@
     <Compile Include="Authentication\AuthenticationServiceFacts.cs" />
     <Compile Include="Authentication\Providers\CommonAuth\AzureActiveDirectoryV2AuthenticatorFacts.cs" />
     <Compile Include="Authentication\TestCredentialHelper.cs" />
-    <Compile Include="AutocompleteServiceQueryFacts.cs" />
+    <Compile Include="Infrastructure\ODataCacheOutputAttributeFacts.cs" />
+    <Compile Include="Queries\AutocompleteDatabasePackageIdsQueryFacts.cs" />
+    <Compile Include="Queries\AutocompleteDatabasePackageVersionsQueryFacts.cs" />
+    <Compile Include="Queries\AutocompleteServiceQueryFacts.cs" />
     <Compile Include="Controllers\ExperimentsControllerFacts.cs" />
     <Compile Include="Controllers\FeaturesControllerFacts.cs" />
     <Compile Include="Controllers\ManageDeprecationJsonApiControllerFacts.cs" />
@@ -97,13 +102,14 @@
     <Compile Include="Services\ConfigurationIconFileProviderFacts.cs" />
     <Compile Include="Services\AsynchronousDeleteAccountServiceFacts.cs" />
     <Compile Include="Services\FeatureFlagServiceFacts.cs" />
+    <Compile Include="Services\GravatarProxyServiceFacts.cs" />
     <Compile Include="Services\IconUrlTemplateProcessorFacts.cs" />
     <Compile Include="Services\PackageDeprecationManagementServiceFacts.cs" />
     <Compile Include="Services\PackageDeprecationServiceFacts.cs" />
+    <Compile Include="Services\PackageVulnerabilityServiceFacts.cs" />
     <Compile Include="Services\SearchSideBySideServiceFacts.cs" />
     <Compile Include="Services\PackageUpdateServiceFacts.cs" />
     <Compile Include="Services\StatusServiceFacts.cs" />
-    <Compile Include="Telemetry\DeploymentIdTelemetryEnricherFacts.cs" />
     <Compile Include="TestData\TestDataResourceUtility.cs" />
     <Compile Include="UsernameValidationRegex.cs" />
     <Compile Include="Extensions\NumberExtensionsFacts.cs" />
@@ -117,8 +123,8 @@
     <Compile Include="Infrastructure\Authentication\ApiKeyV3Facts.cs" />
     <Compile Include="Infrastructure\Authentication\ApiKeyV4Facts.cs" />
     <Compile Include="Infrastructure\Authentication\V3HasherTests.cs" />
-    <Compile Include="AutocompleteServicePackageIdsQueryFacts.cs" />
-    <Compile Include="AutocompleteServicePackageVersionsQueryFacts.cs" />
+    <Compile Include="Queries\AutocompleteServicePackageIdsQueryFacts.cs" />
+    <Compile Include="Queries\AutocompleteServicePackageVersionsQueryFacts.cs" />
     <Compile Include="App_Start\ConfigurationServiceFacts.cs" />
     <Compile Include="Controllers\AppControllerFacts.cs" />
     <Compile Include="Controllers\AuthenticationControllerFacts.cs" />
@@ -126,7 +132,6 @@
     <Compile Include="Controllers\ControllerTests.cs" />
     <Compile Include="Controllers\JsonApiControllerFacts.cs" />
     <Compile Include="Controllers\ODataFeedControllerFactsBase.cs" />
-    <Compile Include="Controllers\ODataV2CuratedFeedControllerFacts.cs" />
     <Compile Include="Controllers\ODataV2FeedControllerFacts.cs" />
     <Compile Include="Controllers\ODataV1FeedControllerFacts.cs" />
     <Compile Include="Controllers\PackagesControllerFacts.cs" />

@@ -8,6 +8,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Web.Mvc;
 using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.Notifications;
 using Microsoft.Owin.Security.OpenIdConnect;
@@ -20,11 +21,12 @@ namespace NuGetGallery.Authentication.Providers.AzureActiveDirectoryV2
     {
         public static class V2Claims
         {
-            public const string TenantId = "http://schemas.microsoft.com/identity/claims/tenantid";
+            public const string EmailAddress = ClaimTypes.Email;
             public const string Identifier = "http://schemas.microsoft.com/identity/claims/objectidentifier";
-            public const string Email = "preferred_username";
-            public const string Name = "name";
             public const string Issuer = "iss";
+            public const string Name = "name";
+            public const string PreferredUsername = "preferred_username";
+            public const string TenantId = "http://schemas.microsoft.com/identity/claims/tenantid";
 
             /// <summary>
             /// ACR is the Authentication Class Reference token, which is the claim that is returned by OpenId upon usage of multi-factor during authentication.
@@ -98,9 +100,9 @@ namespace NuGetGallery.Authentication.Providers.AzureActiveDirectoryV2
             {
                 RedirectUri = siteRoot + _callbackPath,
                 PostLogoutRedirectUri = siteRoot,
-                Scope = OpenIdConnectScopes.OpenIdProfile + " email",
-                ResponseType = OpenIdConnectResponseTypes.CodeIdToken,
-                TokenValidationParameters = new System.IdentityModel.Tokens.TokenValidationParameters() { ValidateIssuer = false },
+                Scope = OpenIdConnectScope.OpenIdProfile + " email",
+                ResponseType = OpenIdConnectResponseType.CodeIdToken,
+                TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters() { ValidateIssuer = false },
                 Notifications = new OpenIdConnectAuthenticationNotifications
                 {
                     AuthenticationFailed = AuthenticationFailed,
@@ -182,10 +184,12 @@ namespace NuGetGallery.Authentication.Providers.AzureActiveDirectoryV2
             }
 
             var nameClaim = claimsIdentity.FindFirst(V2Claims.Name);
-            var emailClaim = claimsIdentity.FindFirst(V2Claims.Email);
+            var emailClaim = claimsIdentity.FindFirst(V2Claims.EmailAddress);
+            var preferredUsernameClaim = claimsIdentity.FindFirst(V2Claims.PreferredUsername);
+            emailClaim = emailClaim ?? preferredUsernameClaim;
             if (emailClaim == null)
             {
-                throw new ArgumentException($"External Authentication is missing required claim: '{V2Claims.Email}'");
+                throw new ArgumentException($"External Authentication is missing required claims: '{V2Claims.EmailAddress}' and '{V2Claims.PreferredUsername}");
             }
 
             var acrClaim = claimsIdentity.FindFirst(V2Claims.ACR);

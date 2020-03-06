@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.IO;
 using System.Linq;
-using System.ServiceModel.Configuration;
 using Autofac;
 using Autofac.Core;
 using Microsoft.Extensions.Configuration;
@@ -101,14 +100,14 @@ namespace NuGetGallery.AccountDeleter
                 services.AddTransient<IMessageServiceConfiguration, CoreMessageServiceConfiguration>();
             }
 
-
             services.AddScoped<IEmailBuilderFactory, EmailBuilderFactory>();
-            services.AddScoped<ITelemetryClient, TelemetryClientWrapper>();
+            services.AddScoped<ITelemetryClient, TelemetryClientWrapper>(
+                sp => TelemetryClientWrapper.UseTelemetryConfiguration(ApplicationInsightsConfiguration.TelemetryConfiguration));
 
-            ConfigureGalleryServices(services, configurationRoot);
+            ConfigureGalleryServices(services);
         }
 
-        protected void ConfigureGalleryServices(IServiceCollection services, IConfigurationRoot configurationRoot)
+        protected void ConfigureGalleryServices(IServiceCollection services)
         {
             if (IsDebugMode)
             {
@@ -127,8 +126,8 @@ namespace NuGetGallery.AccountDeleter
                 services.AddScoped<IDeleteAccountService, DeleteAccountService>();
 
                 services.AddScoped<IUserService, AccountDeleteUserService>();
-                services.AddScoped<ITelemetryClient>(sp => { return TelemetryClientWrapper.Instance; });
                 services.AddScoped<IDiagnosticsService, DiagnosticsService>();
+                services.AddScoped<IDiagnosticsSource>(ds => new TraceDiagnosticsSource(nameof(TelemetryService), ds.GetRequiredService<ITelemetryClient>()));
 
                 services.AddScoped<IPackageService, PackageService>();
                 services.AddScoped<IPackageUpdateService, PackageUpdateService>();

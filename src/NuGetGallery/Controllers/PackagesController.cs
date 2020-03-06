@@ -51,6 +51,11 @@ namespace NuGetGallery
         /// </remarks>
         internal const int MaxAllowedLicenseLengthForDisplaying = 1024 * 1024; // 1 MB
 
+        /// <summary>
+        /// Only perform the "is indexed" check for a short time after the package was lasted edited or created.
+        /// </summary>
+        private static readonly TimeSpan IsIndexedCheckUntil = TimeSpan.FromDays(1);
+
         private static readonly IReadOnlyList<ReportPackageReason> ReportAbuseReasons = new[]
         {
             ReportPackageReason.ViolatesALicenseIOwn,
@@ -790,26 +795,27 @@ namespace NuGetGallery
                 return RedirectToActionPermanent("DisplayPackage", new { id = id, version = normalized });
             }
 
-            Package package = null;
             // Load all packages with the ID.
-            var packages = _packageService.FindPackagesById(id, PackageDeprecationFieldsToInclude.Deprecation);
+            Package package = null;
+            var allVersions = _packageService.FindPackagesById(id, includePackageRegistration: true);
+
             if (version != null)
             {
                 if (version.Equals(GalleryConstants.AbsoluteLatestUrlString, StringComparison.InvariantCultureIgnoreCase))
                 {
                     // The user is looking for the absolute latest version and not an exact version.
-                    package = packages.FirstOrDefault(p => p.IsLatestSemVer2);
+                    package = allVersions.FirstOrDefault(p => p.IsLatestSemVer2);
                 }
                 else
                 {
-                    package = _packageService.FilterExactPackage(packages, version);
+                    package = _packageService.FilterExactPackage(allVersions, version);
                 }
             }
 
             if (package == null)
             {
                 // If we cannot find the exact version or no version was provided, fall back to the latest version.
-                package = _packageService.FilterLatestPackage(packages, SemVerLevelKey.SemVer2, allowPrerelease: true);
+                package = _packageService.FilterLatestPackage(allVersions, SemVerLevelKey.SemVer2, allowPrerelease: true);
             }
 
             // Validating packages should be hidden to everyone but the owners and admins.
@@ -822,15 +828,25 @@ namespace NuGetGallery
                 return HttpNotFound();
             }
 
-            var deprecation = _deprecationService.GetDeprecationByPackage(package);
-            var model = _displayPackageViewModelFactory.Create(package, currentUser, deprecation, await _readMeService.GetReadMeHtmlAsync(package));
+            var readme = await _readMeService.GetReadMeHtmlAsync(package);
+            var deprecations = _deprecationService.GetDeprecationsById(id);
+            var packageKeyToDeprecation = deprecations
+                .GroupBy(d => d.PackageKey)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var model = _displayPackageViewModelFactory.Create(
+                package,
+                allVersions,
+                currentUser,
+                packageKeyToDeprecation,
+                readme);
 
             model.ValidatingTooLong = _validationService.IsValidatingTooLong(package);
             model.PackageValidationIssues = _validationService.GetLatestPackageValidationIssues(package);
             model.SymbolsPackageValidationIssues = _validationService.GetLatestPackageValidationIssues(model.LatestSymbolsPackage);
             model.IsCertificatesUIEnabled = _contentObjectService.CertificatesConfiguration?.IsUIEnabledForUser(currentUser) ?? false;
             model.IsAtomFeedEnabled = _featureFlagService.IsPackagesAtomFeedEnabled();
-            model.IsPackageDeprecationEnabled = _featureFlagService.IsManageDeprecationEnabled(currentUser, package.PackageRegistration);
+            model.IsPackageDeprecationEnabled = _featureFlagService.IsManageDeprecationEnabled(currentUser, allVersions);
 
             if(model.IsGitHubUsageEnabled = _featureFlagService.IsGitHubUsageEnabled(currentUser))
             {
@@ -856,42 +872,55 @@ namespace NuGetGallery
             var externalSearchService = searchService as ExternalSearchService;
             if (searchService.ContainsAllVersions && externalSearchService != null)
             {
-                var isIndexedCacheKey = $"IsIndexed_{package.PackageRegistration.Id}_{package.Version}";
-                var isIndexed = HttpContext.Cache.Get(isIndexedCacheKey) as bool?;
-                if (!isIndexed.HasValue)
+                // A package can be re-indexed when it is created or edited. Determine the latest of these times.
+                var sinceLatestUpsert = package.Created;
+                if (package.LastEdited.HasValue && package.LastEdited > sinceLatestUpsert)
                 {
-                    var normalizedRegistrationId = package.PackageRegistration.Id
-                        .Normalize(NormalizationForm.FormC);
-
-                    var searchFilter = SearchAdaptor.GetSearchFilter(
-                            q: "id:\"" + normalizedRegistrationId + "\" AND version:\"" + package.Version + "\"",
-                        page: 1,
-                        includePrerelease: true,
-                        sortOrder: null,
-                        context: SearchFilter.ODataSearchContext,
-                        semVerLevel: SemVerLevelKey.SemVerLevel2);
-
-                    searchFilter.IncludeAllVersions = true;
-
-                    var results = await externalSearchService.RawSearch(searchFilter);
-
-                    isIndexed = results.Hits > 0;
-
-                    var expiration = Cache.NoAbsoluteExpiration;
-                    if (!isIndexed.Value)
-                    {
-                        expiration = DateTime.UtcNow.Add(TimeSpan.FromSeconds(30));
-                    }
-
-                    HttpContext.Cache.Add(isIndexedCacheKey,
-                        isIndexed,
-                        null,
-                        expiration,
-                        Cache.NoSlidingExpiration,
-                        CacheItemPriority.Default, null);
+                    sinceLatestUpsert = package.LastEdited.Value;
                 }
 
-                model.IsIndexed = isIndexed;
+                // If a package has not been created or edited in quite a while, save the cache memory and search
+                // service load by not checking the indexed status.
+                var isIndexedCheckUntil = sinceLatestUpsert + IsIndexedCheckUntil;
+                if (DateTime.UtcNow < isIndexedCheckUntil)
+                {
+                    var isIndexedCacheKey = $"IsIndexed_{package.PackageRegistration.Id}_{package.Version}";
+                    var isIndexed = HttpContext.Cache.Get(isIndexedCacheKey) as bool?;
+                    if (!isIndexed.HasValue)
+                    {
+                        var normalizedRegistrationId = package.PackageRegistration.Id
+                            .Normalize(NormalizationForm.FormC);
+
+                        var searchFilter = SearchAdaptor.GetSearchFilter(
+                                q: "id:\"" + normalizedRegistrationId + "\" AND version:\"" + package.Version + "\"",
+                            page: 1,
+                            includePrerelease: true,
+                            sortOrder: null,
+                            context: SearchFilter.ODataSearchContext,
+                            semVerLevel: SemVerLevelKey.SemVerLevel2);
+
+                        searchFilter.IncludeAllVersions = true;
+
+                        var results = await externalSearchService.RawSearch(searchFilter);
+
+                        isIndexed = results.Hits > 0;
+
+                        var expiration = isIndexedCheckUntil;
+                        if (!isIndexed.Value)
+                        {
+                            expiration = DateTime.UtcNow.Add(TimeSpan.FromSeconds(30));
+                        }
+
+                        HttpContext.Cache.Add(isIndexedCacheKey,
+                            isIndexed,
+                            null,
+                            expiration,
+                            Cache.NoSlidingExpiration,
+                            CacheItemPriority.Default, null);
+                    }
+
+                    model.IsIndexed = isIndexed;
+                }
             }
 
             ViewBag.FacebookAppID = _config.FacebookAppId;
@@ -1619,7 +1648,7 @@ namespace NuGetGallery
                 return HttpForbidden();
             }
 
-            var model = _deletePackageViewModelFactory.Create(package, currentUser, DeleteReasons);
+            var model = _deletePackageViewModelFactory.Create(package, packages, currentUser, DeleteReasons);
 
             // Fetch all versions of the package with symbols.
             var versionsWithSymbols = packages
@@ -1905,8 +1934,39 @@ namespace NuGetGallery
         [ValidateAntiForgeryToken]
         public virtual async Task<ActionResult> UpdateListed(string id, string version, bool? listed)
         {
-            // Edit does exactly the same thing that Delete used to do... REUSE ALL THE CODE!
-            return await Edit(id, version, listed, Url.Package);
+            var package = _packageService.FindPackageByIdAndVersionStrict(id, version);
+            if (package == null)
+            {
+                return HttpNotFound();
+            }
+
+            if (ActionsRequiringPermissions.EditPackage.CheckPermissionsOnBehalfOfAnyAccount(GetCurrentUser(), package) != PermissionsCheckResult.Allowed)
+            {
+                return HttpForbidden();
+            }
+
+            if (package.PackageRegistration.IsLocked)
+            {
+                return new HttpStatusCodeResult(403, string.Format(CultureInfo.CurrentCulture, Strings.PackageIsLocked, package.PackageRegistration.Id));
+            }
+
+            string action;
+            if (!(listed ?? false))
+            {
+                action = "unlisted";
+                await _packageUpdateService.MarkPackageUnlistedAsync(package);
+            }
+            else
+            {
+                action = "listed";
+                await _packageUpdateService.MarkPackageListedAsync(package);
+            }
+            TempData["Message"] = string.Format(
+                CultureInfo.CurrentCulture,
+                "The package has been {0}. It may take several hours for this change to propagate through our system.",
+                action);
+
+            return Redirect(Url.ManagePackage(new TrivialPackageVersionModel(package)));
         }
 
         [UIAuthorize]
@@ -1969,9 +2029,11 @@ namespace NuGetGallery
                 }
             }
 
+            TempData["Message"] = "Your package's documentation has been updated.";
+
             return Json(new
             {
-                location = returnUrl ?? Url.Package(id, version)
+                location = returnUrl ?? Url.ManagePackage(new TrivialPackageVersionModel(id, version))
             });
         }
 
@@ -2127,43 +2189,6 @@ namespace NuGetGallery
                 return _messageService.SendMessageAsync(emailMessage);
             });
             return Task.WhenAll(tasks);
-        }
-
-        internal virtual async Task<ActionResult> Edit(string id, string version, bool? listed, Func<Package, bool, string> urlFactory)
-        {
-            var package = _packageService.FindPackageByIdAndVersionStrict(id, version);
-            if (package == null)
-            {
-                return HttpNotFound();
-            }
-
-            if (ActionsRequiringPermissions.EditPackage.CheckPermissionsOnBehalfOfAnyAccount(GetCurrentUser(), package) != PermissionsCheckResult.Allowed)
-            {
-                return HttpForbidden();
-            }
-
-            if (package.PackageRegistration.IsLocked)
-            {
-                return new HttpStatusCodeResult(403, string.Format(CultureInfo.CurrentCulture, Strings.PackageIsLocked, package.PackageRegistration.Id));
-            }
-
-            string action;
-            if (!(listed ?? false))
-            {
-                action = "unlisted";
-                await _packageUpdateService.MarkPackageUnlistedAsync(package);
-            }
-            else
-            {
-                action = "listed";
-                await _packageUpdateService.MarkPackageListedAsync(package);
-            }
-            TempData["Message"] = string.Format(
-                CultureInfo.CurrentCulture,
-                "The package has been {0}. It may take several hours for this change to propagate through our system.",
-                action);
-
-            return Redirect(urlFactory(package, /*relativeUrl:*/ true));
         }
 
         [UIAuthorize]
@@ -2723,8 +2748,8 @@ namespace NuGetGallery
 
             try
             {
-                var readMeHtml = await _readMeService.GetReadMeHtmlAsync(formData, Request.ContentEncoding);
-                return Json(new[] { readMeHtml });
+                var readMeResult = await _readMeService.GetReadMeHtmlAsync(formData, Request.ContentEncoding);
+                return Json(readMeResult);
             }
             catch (Exception ex)
             {

@@ -23,7 +23,9 @@ namespace NuGetGallery
             CertificatesConfiguration = new CertificatesConfiguration();
             SymbolsConfiguration = new SymbolsConfiguration();
             TyposquattingConfiguration = new TyposquattingConfiguration();
+            GitHubUsageConfiguration = new GitHubUsageConfiguration(Array.Empty<RepositoryInformation>());
             ABTestConfiguration = new ABTestConfiguration();
+            ODataCacheConfiguration = new ODataCacheConfiguration();
         }
 
         public ILoginDiscontinuationConfiguration LoginDiscontinuationConfiguration { get; private set; }
@@ -32,6 +34,7 @@ namespace NuGetGallery
         public ITyposquattingConfiguration TyposquattingConfiguration { get; private set; }
         public IGitHubUsageConfiguration GitHubUsageConfiguration { get; private set; }
         public IABTestConfiguration ABTestConfiguration { get; private set; }
+        public IODataCacheConfiguration ODataCacheConfiguration { get; private set; }
 
         public async Task Refresh()
         {
@@ -54,12 +57,15 @@ namespace NuGetGallery
             var reposCache = 
                 await Refresh<IReadOnlyCollection<RepositoryInformation>>(ServicesConstants.ContentNames.NuGetPackagesGitHubDependencies) ??
                 Array.Empty<RepositoryInformation>();
-
             GitHubUsageConfiguration = new GitHubUsageConfiguration(reposCache);
 
             ABTestConfiguration =
                await Refresh<ABTestConfiguration>(ServicesConstants.ContentNames.ABTestConfiguration) ??
                new ABTestConfiguration();
+
+            ODataCacheConfiguration =
+               await Refresh<ODataCacheConfiguration>(ServicesConstants.ContentNames.ODataCacheConfiguration) ??
+               new ODataCacheConfiguration();
         }
 
         private async Task<T> Refresh<T>(string contentName)

@@ -33,7 +33,8 @@ namespace NuGetGallery
             Mock<IPackageService> packageService = null,
             Mock<IReservedNamespaceService> reservedNamespaceService = null,
             Mock<IValidationService> validationService = null,
-            Mock<IAppConfiguration> config = null)
+            Mock<IAppConfiguration> config = null,
+            Mock<IPackageVulnerabilityService> vulnerabilityService = null)
         {
             packageService = packageService ?? new Mock<IPackageService>();
 
@@ -63,6 +64,11 @@ namespace NuGetGallery
                     .Returns(new ReservedNamespace[0]);
             }
 
+            if (vulnerabilityService == null)
+            {
+                vulnerabilityService = new Mock<IPackageVulnerabilityService>();
+            }
+
             validationService = validationService ?? new Mock<IValidationService>();
             config = config ?? new Mock<IAppConfiguration>();
             var diagnosticsService = new Mock<IDiagnosticsService>();
@@ -81,7 +87,8 @@ namespace NuGetGallery
                 Mock.Of<ITelemetryService>(),
                 Mock.Of<ICoreLicenseFileService>(),
                 diagnosticsService.Object,
-                Mock.Of<IFeatureFlagService>());
+                Mock.Of<IFeatureFlagService>(),
+                vulnerabilityService.Object);
 
             return packageUploadService.Object;
         }
@@ -94,16 +101,30 @@ namespace NuGetGallery
                 var key = 0;
                 var packageService = new Mock<IPackageService>();
                 packageService.Setup(x => x.FindPackageRegistrationById(It.IsAny<string>())).Returns((PackageRegistration)null);
+                var vulnerabilityService = new Mock<IPackageVulnerabilityService>();
 
                 var id = "Microsoft.Aspnet.Mvc";
-                var packageUploadService = CreateService(packageService);
+                var packageUploadService = CreateService(packageService, vulnerabilityService: vulnerabilityService);
                 var nugetPackage = PackageServiceUtility.CreateNuGetPackage(id: id);
                 var owner = new User { Key = key++, Username = "owner" };
                 var currentUser = new User { Key = key++, Username = "user" };
 
-                var package = await packageUploadService.GeneratePackageAsync(id, nugetPackage.Object, new PackageStreamMetadata(), owner, currentUser);
+                var package = await packageUploadService.GeneratePackageAsync(
+                    id, nugetPackage.Object, new PackageStreamMetadata(), owner, currentUser);
 
-                packageService.Verify(x => x.CreatePackageAsync(It.IsAny<PackageArchiveReader>(), It.IsAny<PackageStreamMetadata>(), owner, currentUser, false), Times.Once);
+                packageService.Verify(
+                    x => x.CreatePackageAsync(
+                        It.IsAny<PackageArchiveReader>(), 
+                        It.IsAny<PackageStreamMetadata>(), 
+                        owner, 
+                        currentUser, 
+                        false), 
+                    Times.Once);
+
+                vulnerabilityService.Verify(
+                    x => x.ApplyExistingVulnerabilitiesToPackage(package),
+                    Times.Once);
+
                 Assert.False(package.PackageRegistration.IsVerified);
             }
 
@@ -135,10 +156,18 @@ namespace NuGetGallery
                     .Setup(r => r.GetReservedNamespacesForId(It.IsAny<string>()))
                     .Returns(testNamespaces.ToList().AsReadOnly());
 
-                var packageUploadService = CreateService(reservedNamespaceService: reservedNamespaceService);
+                var vulnerabilityService = new Mock<IPackageVulnerabilityService>();
+
+                var packageUploadService = CreateService(
+                    reservedNamespaceService: reservedNamespaceService, 
+                    vulnerabilityService: vulnerabilityService);
                 var nugetPackage = PackageServiceUtility.CreateNuGetPackage(id: id);
 
                 var package = await packageUploadService.GeneratePackageAsync(id, nugetPackage.Object, new PackageStreamMetadata(), firstUser, firstUser);
+
+                vulnerabilityService.Verify(
+                    x => x.ApplyExistingVulnerabilitiesToPackage(package),
+                    Times.Once);
 
                 Assert.Equal(shouldMarkIdVerified, package.PackageRegistration.IsVerified);
             }
@@ -169,10 +198,18 @@ namespace NuGetGallery
                     .Setup(r => r.GetReservedNamespacesForId(It.IsAny<string>()))
                     .Returns(testNamespaces.ToList().AsReadOnly());
 
-                var packageUploadService = CreateService(reservedNamespaceService: reservedNamespaceService);
+                var vulnerabilityService = new Mock<IPackageVulnerabilityService>();
+
+                var packageUploadService = CreateService(
+                    reservedNamespaceService: reservedNamespaceService,
+                    vulnerabilityService: vulnerabilityService);
                 var nugetPackage = PackageServiceUtility.CreateNuGetPackage(id: id);
 
                 var package = await packageUploadService.GeneratePackageAsync(id, nugetPackage.Object, new PackageStreamMetadata(), lastUser, lastUser);
+
+                vulnerabilityService.Verify(
+                    x => x.ApplyExistingVulnerabilitiesToPackage(package),
+                    Times.Once);
 
                 Assert.False(package.PackageRegistration.IsVerified);
             }
@@ -554,7 +591,7 @@ namespace NuGetGallery
                     Assert.Equal(PackageValidationResultType.Accepted, result.Type);
                     Assert.Null(result.Message);
                     Assert.Single(result.Warnings);
-                    Assert.StartsWith("<licenseUrl> element will be deprecated, please consider switching to specifying the license in the package.", result.Warnings[0].PlainTextMessage);
+                    Assert.StartsWith("The <licenseUrl> element is deprecated. Consider using the <license> element instead.", result.Warnings[0].PlainTextMessage);
                     Assert.IsType<LicenseUrlDeprecationValidationMessage>(result.Warnings[0]);
                 }
             }
@@ -1130,6 +1167,75 @@ namespace NuGetGallery
                 _featureFlagService
                     .Setup(ffs => ffs.AreEmbeddedIconsEnabled(_currentUser))
                     .Returns(true);
+
+                var result = await _target.ValidateBeforeGeneratePackageAsync(
+                    _nuGetPackage.Object,
+                    GetPackageMetadata(_nuGetPackage),
+                    _currentUser);
+
+                Assert.Equal(PackageValidationResultType.Accepted, result.Type);
+                Assert.Null(result.Message);
+                Assert.Empty(result.Warnings);
+            }
+
+            [Fact]
+            public async Task WarnsAboutPackagesWithIconUrlForFlightedUsers()
+            {
+                _nuGetPackage = GeneratePackageWithUserContent(
+                    iconUrl: new Uri("https://nuget.test/icon"),
+                    iconFilename: null,
+                    licenseExpression: "MIT",
+                    licenseUrl: new Uri("https://licenses.nuget.org/MIT"));
+                _featureFlagService
+                    .Setup(ffs => ffs.AreEmbeddedIconsEnabled(_currentUser))
+                    .Returns(true);
+
+                var result = await _target.ValidateBeforeGeneratePackageAsync(
+                    _nuGetPackage.Object,
+                    GetPackageMetadata(_nuGetPackage),
+                    _currentUser);
+
+                Assert.Equal(PackageValidationResultType.Accepted, result.Type);
+                Assert.Null(result.Message);
+                var warning = Assert.Single(result.Warnings);
+                Assert.IsType<IconUrlDeprecationValidationMessage>(warning);
+                Assert.StartsWith("The <iconUrl> element is deprecated. Consider using the <icon> element instead.", warning.PlainTextMessage);
+                Assert.StartsWith("The &lt;iconUrl&gt; element is deprecated. Consider using the &lt;icon&gt; element instead.", warning.RawHtmlMessage);
+            }
+
+            [Fact]
+            public async Task DoesntWarnAboutPackagesWithNoIconForFlightedUsers()
+            {
+                _nuGetPackage = GeneratePackageWithUserContent(
+                    iconUrl: null,
+                    iconFilename: null,
+                    licenseExpression: "MIT",
+                    licenseUrl: new Uri("https://licenses.nuget.org/MIT"));
+                _featureFlagService
+                    .Setup(ffs => ffs.AreEmbeddedIconsEnabled(_currentUser))
+                    .Returns(true);
+
+                var result = await _target.ValidateBeforeGeneratePackageAsync(
+                    _nuGetPackage.Object,
+                    GetPackageMetadata(_nuGetPackage),
+                    _currentUser);
+
+                Assert.Equal(PackageValidationResultType.Accepted, result.Type);
+                Assert.Null(result.Message);
+                Assert.Empty(result.Warnings);
+            }
+
+            [Fact]
+            public async Task DoesntWarnAboutPackagesWithIconUrl()
+            {
+                _nuGetPackage = GeneratePackageWithUserContent(
+                    iconUrl: new Uri("https://nuget.test/icon"),
+                    iconFilename: null,
+                    licenseExpression: "MIT",
+                    licenseUrl: new Uri("https://licenses.nuget.org/MIT"));
+                _featureFlagService
+                    .Setup(ffs => ffs.AreEmbeddedIconsEnabled(_currentUser))
+                    .Returns(false);
 
                 var result = await _target.ValidateBeforeGeneratePackageAsync(
                     _nuGetPackage.Object,
@@ -2133,6 +2239,7 @@ namespace NuGetGallery
             protected readonly Mock<ITelemetryService> _telemetryService;
             protected readonly Mock<ICoreLicenseFileService> _licenseFileService;
             protected readonly Mock<IDiagnosticsService> _diagnosticsService;
+            protected readonly Mock<IPackageVulnerabilityService> _vulnerabilityService;
             protected Package _package;
             protected Stream _packageFile;
             protected ArgumentException _unexpectedException;
@@ -2180,6 +2287,8 @@ namespace NuGetGallery
                     .Setup(ffs => ffs.AreEmbeddedIconsEnabled(It.IsAny<User>()))
                     .Returns(false);
 
+                _vulnerabilityService = new Mock<IPackageVulnerabilityService>();
+
                 _target = new PackageUploadService(
                     _packageService.Object,
                     _packageFileService.Object,
@@ -2191,7 +2300,8 @@ namespace NuGetGallery
                     _telemetryService.Object,
                     _licenseFileService.Object,
                     _diagnosticsService.Object,
-                    _featureFlagService.Object);
+                    _featureFlagService.Object,
+                    _vulnerabilityService.Object);
             }
 
             protected static Mock<TestPackageReader> GeneratePackage(
@@ -2218,6 +2328,7 @@ namespace NuGetGallery
                 bool isSigned = true,
                 int? desiredTotalEntryCount = null,
                 Func<string> getCustomNuspecNodes = null,
+                Uri iconUrl = null,
                 Uri licenseUrl = null,
                 string licenseExpression = null,
                 string licenseFilename = null,
@@ -2232,6 +2343,7 @@ namespace NuGetGallery
                     isSigned: isSigned,
                     desiredTotalEntryCount: desiredTotalEntryCount,
                     getCustomNuspecNodes: getCustomNuspecNodes,
+                    iconUrl: iconUrl,
                     licenseUrl: licenseUrl,
                     licenseExpression: licenseExpression,
                     licenseFilename: licenseFilename,
@@ -2249,6 +2361,7 @@ namespace NuGetGallery
                 bool isSigned = true,
                 int? desiredTotalEntryCount = null,
                 Func<string> getCustomNuspecNodes = null,
+                Uri iconUrl = null,
                 Uri licenseUrl = null,
                 string licenseExpression = null,
                 string licenseFilename = null,
@@ -2265,6 +2378,7 @@ namespace NuGetGallery
                     desiredTotalEntryCount: desiredTotalEntryCount,
                     getCustomNuspecNodes: getCustomNuspecNodes,
                     licenseUrl: licenseUrl,
+                    iconUrl: iconUrl,
                     licenseExpression: licenseExpression,
                     licenseFilename: licenseFilename,
                     licenseFileContents: GetBinaryLicenseFileContents(licenseFileBinaryContents, licenseFileContents),

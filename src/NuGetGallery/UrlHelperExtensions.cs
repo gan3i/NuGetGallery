@@ -595,6 +595,35 @@ namespace NuGetGallery
             return GetActionLink(url, "Profiles", "Users", relativeUrl, routeValues);
         }
 
+        public static string Avatar(
+            this UrlHelper url,
+            string accountName,
+            int imageSize,
+            bool relativeUrl = true)
+        {
+            return GetRouteLink(
+                url,
+                RouteName.GetAccountAvatar,
+                relativeUrl,
+                routeValues: new RouteValueDictionary
+                {
+                    { "accountName", accountName },
+                    { "imageSize", imageSize },
+                });
+        }
+
+        public static string Avatar(
+            this UrlHelper url,
+            User user,
+            bool proxy,
+            int imageSize,
+            bool relativeUrl = true)
+        {
+            return proxy
+                ? url.Avatar(user.Username, imageSize, relativeUrl)
+                : GravatarHelper.RawUrl(user.EmailAddress, imageSize);
+        }
+
         /// <summary>
         /// Initializes a user link that can be resolved at a later time.
         /// 
@@ -1131,6 +1160,16 @@ namespace NuGetGallery
         public static string SigninAssistance(this UrlHelper url, bool relativeUrl = true)
         {
             return GetRouteLink(url, RouteName.SigninAssistance, relativeUrl);
+        }
+
+        public static string Send2FAFeedback(this UrlHelper url, bool relativeUrl = true)
+        {
+            return GetRouteLink(url, RouteName.Send2FAFeedback, relativeUrl);
+        }
+
+        public static string ChangeMultiFactorAuthentication(this UrlHelper url, bool relativeUrl = true)
+        {
+            return GetRouteLink(url, RouteName.ChangeMultiFactorAuthentication, relativeUrl);
         }
 
         public static RouteUrlTemplate<OwnerRequestsListItemViewModel> ConfirmPendingOwnershipRequestTemplate(

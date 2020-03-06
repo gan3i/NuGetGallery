@@ -1,10 +1,9 @@
-﻿using NuGetGallery.Configuration;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Mail;
-using System.Text;
-using System.Threading.Tasks;
+using NuGetGallery.Configuration;
 
 namespace NuGetGallery.AccountDeleter
 {
@@ -48,7 +47,7 @@ namespace NuGetGallery.AccountDeleter
         public bool FeedOnlyMode { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string FileStorageDirectory { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string Brand { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public StorageType StorageType { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public string StorageType { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public Uri SmtpUri { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string SqlConnectionString { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string SqlConnectionStringSupportRequest { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -57,6 +56,7 @@ namespace NuGetGallery.AccountDeleter
         public string FacebookAppId { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string AppInsightsInstrumentationKey { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public double AppInsightsSamplingPercentage { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public int AppInsightsHeartbeatIntervalSeconds { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string ReCaptchaPrivateKey { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string ReCaptchaPublicKey { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string GoogleAnalyticsPropertyId { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -87,7 +87,6 @@ namespace NuGetGallery.AccountDeleter
         public bool RejectSignedPackagesWithNoRegisteredCertificate { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public bool RejectPackagesWithTooManyPackageEntries { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public bool BlockSearchEngineIndexing { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public string[] RedirectedCuratedFeeds { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public bool AsynchronousEmailServiceEnabled { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public bool RejectPackagesWithLicense { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public bool BlockLegacyLicenseUrl { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -107,5 +106,7 @@ namespace NuGetGallery.AccountDeleter
         public bool AsynchronousDeleteAccountServiceEnabled { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string EmbeddedIconUrlTemplate { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public bool SelfServiceAccountDeleteEnabled { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public string DeploymentLabel { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public string UsabillaFeedbackButtonId { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     }
 }

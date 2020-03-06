@@ -102,18 +102,19 @@ namespace NuGetGallery
         public const string DeleteUserCertificate = "DeleteUserCertificate";
         public const string GetUserCertificate = "GetUserCertificate";
         public const string GetUserCertificates = "GetUserCertificates";
+        public const string GetAccountAvatar = "GetUserAvatar";
         public const string AddOrganizationCertificate = "AddOrganizationCertificate";
         public const string DeleteOrganizationCertificate = "DeleteOrganizationCertificate";
         public const string GetOrganizationCertificate = "GetOrganizationCertificate";
         public const string GetOrganizationCertificates = "GetOrganizationCertificates";
         public const string SetRequiredSigner = "SetRequiredSigner";
         public const string License = "License";
-        public const string ApiV2CuratedSimulateError = "api-v2curated-simulate-error";
         public const string PagesSimulateError = "PagesSimulateError";
         public const string ApiSimulateError = "ApiSimulateError";
         public const string ExperimentsSearchSideBySide = "ExperimentsSearchSideBySide";
         public const string PackageReflowAction = "PackageReflowAction";
         public const string PackageRevalidateAction = "PackageRevalidateAction";
         public const string PackageRevalidateSymbolsAction = "PackageRevalidateSymbolsAction";
+        public const string Send2FAFeedback = "Send2FAFeedback";
     }
 }

@@ -54,11 +54,6 @@ namespace NuGetGallery
                 throw new InvalidOperationException("A package that failed validation should never be listed!");
             }
 
-            if (!package.Listed && (package.IsLatestStable || package.IsLatest || package.IsLatestSemVer2 || package.IsLatestStableSemVer2))
-            {
-                throw new InvalidOperationException("An unlisted package should never be latest or latest stable!");
-            }
-
             package.Listed = true;
             package.LastUpdated = DateTime.UtcNow;
             // NOTE: LastEdited will be overwritten by a trigger defined in the migration named "AddTriggerForPackagesLastEdited".
@@ -98,7 +93,7 @@ namespace NuGetGallery
             // NOTE: LastEdited will be overwritten by a trigger defined in the migration named "AddTriggerForPackagesLastEdited".
             package.LastEdited = DateTime.UtcNow;
 
-            if (ShouldUpdateIsLatestForPackageWhenUnlisting(package))
+            if (package.IsLatest || package.IsLatestStable || package.IsLatestSemVer2 || package.IsLatestStableSemVer2)
             {
                 await _packageService.UpdateIsLatestAsync(package.PackageRegistration, commitChanges: false);
             }
@@ -125,17 +120,16 @@ namespace NuGetGallery
                 throw new ArgumentException(nameof(packages));
             }
 
-            if (packages.Select(p => p.PackageRegistrationKey).Distinct().Count() > 1)
-            {
-                throw new ArgumentException("All packages to update must have the same ID.", nameof(packages));
-            }
-
             await UpdatePackagesInBulkAsync(packages.Select(p => p.Key).ToList());
 
             if (updateIndex)
             {
-                // The indexing service will find the latest version of the package to index--it doesn't matter what package we pass in.
-                _indexingService.UpdatePackage(packages.First());
+                // The indexing service will find the latest version of a package to index--it doesn't matter what package we pass in.
+                // We do, however, need to pass in a single package for each registration to ensure that each package is indexed.
+                foreach (var package in packages.GroupBy(p => p.PackageRegistration).Select(g => g.First()))
+                {
+                    _indexingService.UpdatePackage(package);
+                }
             }
         }
 
@@ -171,11 +165,6 @@ WHERE [Key] IN ({0})";
                     $"Updated an unexpected number of packages when performing a bulk update! " +
                     $"Updated {result} packages instead of {expectedResult}.");
             }
-        }
-
-        private bool ShouldUpdateIsLatestForPackageWhenUnlisting(Package package)
-        {
-            return package.IsLatest || package.IsLatestStable || package.IsLatestSemVer2 || package.IsLatestStableSemVer2;
         }
     }
 }

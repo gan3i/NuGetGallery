@@ -1247,6 +1247,15 @@ namespace NuGetGallery {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to A nuget package may not contain multiple dependency groups with the same target framework..
+        /// </summary>
+        public static string NuGetPackageDuplicateDependencyGroup {
+            get {
+                return ResourceManager.GetString("NuGetPackageDuplicateDependencyGroup", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to A nuget package&apos;s ID and version properties combined may not be more than {0} characters long..
         /// </summary>
         public static string NuGetPackageIdVersionCombinedTooLong {
@@ -1765,6 +1774,15 @@ namespace NuGetGallery {
         public static string ReservedNamespace_UserNotFound {
             get {
                 return ResourceManager.GetString("ReservedNamespace_UserNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The API key credential with Key &apos;{0}&apos; is not revocable..
+        /// </summary>
+        public static string RevokeCredential_UnrevocableApiKeyCredential {
+            get {
+                return ResourceManager.GetString("RevokeCredential_UnrevocableApiKeyCredential", resourceCulture);
             }
         }
         
@@ -2937,15 +2955,6 @@ namespace NuGetGallery {
         public static string WarningNotHttpsRepositoryUrlScheme {
             get {
                 return ResourceManager.GetString("WarningNotHttpsRepositoryUrlScheme", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to This package will only be available to download with SemVer 2.0.0 compatible NuGet clients, such as Visual Studio 2017 (version 15.3) and above or NuGet client 4.3 and above. For more information, see https://go.microsoft.com/fwlink/?linkid=852248..
-        /// </summary>
-        public static string WarningSemVer2PackagePushed {
-            get {
-                return ResourceManager.GetString("WarningSemVer2PackagePushed", resourceCulture);
             }
         }
         

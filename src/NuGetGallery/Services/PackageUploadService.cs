@@ -13,7 +13,6 @@ using System.Xml.Linq;
 using NuGet.Packaging;
 using NuGet.Packaging.Licenses;
 using NuGet.Services.Entities;
-using NuGet.Services.Validation;
 using NuGet.Versioning;
 using NuGetGallery.Configuration;
 using NuGetGallery.Diagnostics;
@@ -71,6 +70,7 @@ namespace NuGetGallery
         private readonly ICoreLicenseFileService _coreLicenseFileService;
         private readonly IDiagnosticsSource _trace;
         private readonly IFeatureFlagService _featureFlagService;
+        private readonly IPackageVulnerabilityService _vulnerabilityService;
 
         public PackageUploadService(
             IPackageService packageService,
@@ -83,7 +83,8 @@ namespace NuGetGallery
             ITelemetryService telemetryService,
             ICoreLicenseFileService coreLicenseFileService,
             IDiagnosticsService diagnosticsService,
-            IFeatureFlagService featureFlagService)
+            IFeatureFlagService featureFlagService,
+            IPackageVulnerabilityService vulnerabilityService)
         {
             _packageService = packageService ?? throw new ArgumentNullException(nameof(packageService));
             _packageFileService = packageFileService ?? throw new ArgumentNullException(nameof(packageFileService));
@@ -100,6 +101,7 @@ namespace NuGetGallery
             }
             _trace = diagnosticsService.GetSource(nameof(PackageUploadService));
             _featureFlagService = featureFlagService ?? throw new ArgumentNullException(nameof(featureFlagService));
+            _vulnerabilityService = vulnerabilityService ?? throw new ArgumentNullException(nameof(vulnerabilityService));
         }
 
         public async Task<PackageValidationResult> ValidateBeforeGeneratePackageAsync(
@@ -148,7 +150,7 @@ namespace NuGetGallery
                 return result;
             }
 
-            result = await CheckIconMetadataAsync(nuGetPackage, currentUser);
+            result = await CheckIconMetadataAsync(nuGetPackage, warnings, currentUser);
             if (result != null)
             {
                 //_telemetryService.TrackIconValidationFailure();
@@ -341,18 +343,22 @@ namespace NuGetGallery
             return null;
         }
 
-        private async Task<PackageValidationResult> CheckIconMetadataAsync(PackageArchiveReader nuGetPackage, User user)
+        private async Task<PackageValidationResult> CheckIconMetadataAsync(PackageArchiveReader nuGetPackage, List<IValidationMessage> warnings, User user)
         {
             var nuspecReader = GetNuspecReader(nuGetPackage);
-
             var iconElement = nuspecReader.IconElement;
+            var embeddedIconsEnabled = _featureFlagService.AreEmbeddedIconsEnabled(user);
 
             if (iconElement == null)
             {
+                if (embeddedIconsEnabled && !string.IsNullOrWhiteSpace(nuspecReader.GetIconUrl()))
+                {
+                    warnings.Add(new IconUrlDeprecationValidationMessage());
+                }
                 return null;
             }
 
-            if (!_featureFlagService.AreEmbeddedIconsEnabled(user))
+            if (!embeddedIconsEnabled)
             {
                 return PackageValidationResult.Invalid(Strings.UploadPackage_EmbeddedIconNotAccepted);
             }
@@ -788,6 +794,8 @@ namespace NuGetGallery
                         package.PackageRegistration);
                 }
             }
+
+            _vulnerabilityService.ApplyExistingVulnerabilitiesToPackage(package);
 
             return package;
         }

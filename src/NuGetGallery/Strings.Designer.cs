@@ -2274,6 +2274,15 @@ namespace NuGetGallery {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to There was an unexpected error when submitting feedback. Please contact NuGet support..
+        /// </summary>
+        public static string TwoFAFeedback_Error {
+            get {
+                return ResourceManager.GetString("TwoFAFeedback_Error", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The uploaded package&apos;s id is too similar to the already existing packages: {0} .
         /// </summary>
         public static string TyposquattingCheckFails {
@@ -2355,7 +2364,7 @@ namespace NuGetGallery {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to &lt;licenseUrl&gt; element will be deprecated, please consider switching to specifying the license in the package..
+        ///   Looks up a localized string similar to The &lt;licenseUrl&gt; element is deprecated. Consider using the &lt;license&gt; element instead..
         /// </summary>
         public static string UploadPackage_DeprecatingLicenseUrl {
             get {
@@ -2423,6 +2432,15 @@ namespace NuGetGallery {
         public static string UploadPackage_IconFileType {
             get {
                 return ResourceManager.GetString("UploadPackage_IconFileType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The &lt;iconUrl&gt; element is deprecated. Consider using the &lt;icon&gt; element instead..
+        /// </summary>
+        public static string UploadPackage_IconUrlDeprecated {
+            get {
+                return ResourceManager.GetString("UploadPackage_IconUrlDeprecated", resourceCulture);
             }
         }
         
@@ -3000,15 +3018,6 @@ namespace NuGetGallery {
         public static string WarningNotHttpsRepositoryUrlScheme {
             get {
                 return ResourceManager.GetString("WarningNotHttpsRepositoryUrlScheme", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to This package will only be available to download with SemVer 2.0.0 compatible NuGet clients, such as Visual Studio 2017 (version 15.3) and above or NuGet client 4.3 and above. For more information, see https://go.microsoft.com/fwlink/?linkid=852248..
-        /// </summary>
-        public static string WarningSemVer2PackagePushed {
-            get {
-                return ResourceManager.GetString("WarningSemVer2PackagePushed", resourceCulture);
             }
         }
         

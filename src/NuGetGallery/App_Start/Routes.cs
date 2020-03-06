@@ -343,6 +343,12 @@ namespace NuGetGallery
                 new RouteExtensions.ObfuscatedPathMetadata(1, Obfuscator.DefaultTelemetryUserName));
 
             routes.MapRoute(
+                RouteName.GetAccountAvatar,
+                "profiles/{accountName}/avatar",
+                new { controller = "Users", action = "GetAvatar" },
+                new RouteExtensions.ObfuscatedPathMetadata(1, Obfuscator.DefaultTelemetryUserName));
+
+            routes.MapRoute(
                 RouteName.GetUserCertificate,
                 "account/certificates/{thumbprint}",
                 new { controller = "Users", action = "GetCertificate" },
@@ -365,6 +371,12 @@ namespace NuGetGallery
                 "account/certificates",
                 new { controller = "Users", action = "AddCertificate" },
                 constraints: new { httpMethod = new HttpMethodConstraint("POST") });
+
+            routes.MapRoute(
+                RouteName.Send2FAFeedback,
+                "account/sendfeedback",
+                new { controller = "Users", action = "Send2FAFeedback" },
+                new { httpMethod = new HttpMethodConstraint("POST") });
 
             routes.MapRoute(
                 RouteName.RemovePassword,

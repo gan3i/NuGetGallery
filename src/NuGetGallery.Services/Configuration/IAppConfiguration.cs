@@ -158,7 +158,7 @@ namespace NuGetGallery.Configuration
         /// <summary>
         /// Gets the storage mechanism used by this instance of the gallery
         /// </summary>
-        StorageType StorageType { get; set; }
+        string StorageType { get; set; }
 
         /// <summary>
         /// Gets the URI of the SMTP host to use. Or null if SMTP is not being used. Use <see cref="NuGetGallery.Configuration.SmtpUri"/> to parse it
@@ -206,6 +206,11 @@ namespace NuGetGallery.Configuration
         double AppInsightsSamplingPercentage { get; set; }
 
         /// <summary>
+        /// Gets the Application Insights heartbeat interval in seconds associated with this deployment.
+        /// </summary>
+        int AppInsightsHeartbeatIntervalSeconds { get; set; }
+
+        /// <summary>
         /// Gets the protocol-independent site root
         /// </summary>
         string SiteRoot { get; set; }
@@ -224,11 +229,6 @@ namespace NuGetGallery.Configuration
         /// Gets the Google Analytics Property ID being used, if any.
         /// </summary>
         string GoogleAnalyticsPropertyId { get; set; }
-
-        /// <summary>
-        /// Gets a boolean indicating if perf logs should be collected
-        /// </summary>
-        bool CollectPerfLogs { get; set; }
 
         /// <summary>
         /// Gets a boolean indicating if the search index should be updated automatically in the background
@@ -368,11 +368,6 @@ namespace NuGetGallery.Configuration
         bool BlockSearchEngineIndexing { get; set; }
 
         /// <summary>
-        /// The name of zero or more curated feeds that are redirected to the main feed.
-        /// </summary>
-        string[] RedirectedCuratedFeeds { get; set; }
-
-        /// <summary>
         /// Gets or sets a flag indicating whether asynchronous email service is enabled.
         /// </summary>
         bool AsynchronousEmailServiceEnabled { get; set; }
@@ -449,5 +444,16 @@ namespace NuGetGallery.Configuration
         /// '{version-lower}' will be replaced with the normalized package version in lowercase.
         /// </summary>
         string EmbeddedIconUrlTemplate { get; set; }
+
+        /// <summary>
+        /// Deployment label to log with telemetry.
+        /// </summary>
+        string DeploymentLabel { get; set; }
+
+        /// <summary>
+        /// The Usabilla feedback button ID embedded in the JavaScript snippet obtained from Usabilla. The ID can found
+        /// in your button's JavaScript code. Look for "//w.usabilla.com/{button ID}.js".
+        /// </summary>
+        string UsabillaFeedbackButtonId { get; set; }
     }
 }

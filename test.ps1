@@ -26,10 +26,12 @@ Function Run-Tests {
     
     $TestAssemblies = `
         "tests\AccountDeleter.Facts\bin\$Configuration\AccountDeleter.Facts.dll", `
+        "tests\GitHubVulnerabilities2Db.Facts\bin\$Configuration\GitHubVulnerabilities2Db.Facts.dll", `
         "tests\NuGet.Services.DatabaseMigration.Facts\bin\$Configuration\NuGet.Services.DatabaseMigration.Facts.dll", `
         "tests\NuGet.Services.Entities.Tests\bin\$Configuration\NuGet.Services.Entities.Tests.dll", `
         "tests\NuGetGallery.Core.Facts\bin\$Configuration\NuGetGallery.Core.Facts.dll", `
-        "tests\NuGetGallery.Facts\bin\$Configuration\NuGetGallery.Facts.dll"
+        "tests\NuGetGallery.Facts\bin\$Configuration\NuGetGallery.Facts.dll", `
+        "tests\VerifyMicrosoftPackage.Facts\bin\$Configuration\NuGet.VerifyMicrosoftPackage.Facts.dll"
     
     $TestCount = 0
     
@@ -37,6 +39,9 @@ Function Run-Tests {
         & $xUnitExe (Join-Path $PSScriptRoot $Test) -xml "Results.$TestCount.xml"
         $TestCount++
     }
+
+    Write-Host "Ensuring the EntityFramework version can be discovered."
+    . (Join-Path $PSScriptRoot "tools\Update-Databases.ps1") -MigrationTargets @("FakeMigrationTarget")
 }
     
 Write-Host ("`r`n" * 3)

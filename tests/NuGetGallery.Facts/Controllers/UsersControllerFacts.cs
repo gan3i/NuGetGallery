@@ -1517,7 +1517,7 @@ namespace NuGetGallery
 
                 var userServiceMock = GetMock<IUserService>();
                 userServiceMock
-                    .Setup(x => x.ChangeMultiFactorAuthentication(user, enable2FA))
+                    .Setup(x => x.ChangeMultiFactorAuthentication(user, enable2FA, null))
                     .Returns(Task.CompletedTask)
                     .Verifiable();
 
@@ -1525,7 +1525,7 @@ namespace NuGetGallery
                 var result = await controller.ChangeMultiFactorAuthentication(enable2FA);
 
                 // Assert
-                userServiceMock.Verify(x => x.ChangeMultiFactorAuthentication(user, enable2FA));
+                userServiceMock.Verify(x => x.ChangeMultiFactorAuthentication(user, enable2FA, It.IsAny<string>()));
                 Assert.NotNull(controller.TempData["Message"]);
                 var identity = controller.OwinContext.Authentication.User.Identity as ClaimsIdentity;
                 Assert.NotNull(identity);
@@ -3292,7 +3292,6 @@ namespace NuGetGallery
                 _certificate = new Certificate()
                 {
                     Key = 2,
-                    Sha1Thumbprint = "b",
                     Thumbprint = "c"
                 };
             }
@@ -3354,7 +3353,7 @@ namespace NuGetGallery
 
                 Assert.True(viewModel.CanDelete);
                 Assert.Equal($"/account/certificates/{_certificate.Thumbprint}", viewModel.DeleteUrl);
-                Assert.Equal(_certificate.Sha1Thumbprint, viewModel.Sha1Thumbprint);
+                Assert.Equal(_certificate.Thumbprint, viewModel.Thumbprint);
                 Assert.Equal(JsonRequestBehavior.AllowGet, response.JsonRequestBehavior);
                 Assert.Equal((int)HttpStatusCode.OK, _controller.Response.StatusCode);
 
@@ -3381,7 +3380,6 @@ namespace NuGetGallery
                 _certificate = new Certificate()
                 {
                     Key = 2,
-                    Sha1Thumbprint = "b",
                     Thumbprint = "c"
                 };
             }
@@ -3430,7 +3428,7 @@ namespace NuGetGallery
 
                 Assert.True(viewModel.CanDelete);
                 Assert.Equal($"/account/certificates/{_certificate.Thumbprint}", viewModel.DeleteUrl);
-                Assert.Equal(_certificate.Sha1Thumbprint, viewModel.Sha1Thumbprint);
+                Assert.Equal(_certificate.Thumbprint, viewModel.Thumbprint);
                 Assert.Equal(JsonRequestBehavior.AllowGet, response.JsonRequestBehavior);
                 Assert.Equal((int)HttpStatusCode.OK, _controller.Response.StatusCode);
 
@@ -3461,7 +3459,6 @@ namespace NuGetGallery
                 _certificate = new Certificate()
                 {
                     Key = 2,
-                    Sha1Thumbprint = "b",
                     Thumbprint = "c"
                 };
             }
@@ -3589,7 +3586,6 @@ namespace NuGetGallery
                 _certificate = new Certificate()
                 {
                     Key = 2,
-                    Sha1Thumbprint = "b",
                     Thumbprint = "c"
                 };
             }
@@ -3749,6 +3745,95 @@ namespace NuGetGallery
                 GetMock<IIconUrlProvider>()
                     .Verify(iup => iup.GetIconUrlString(userPackage), Times.AtLeastOnce);
                 Assert.Equal(iconUrl, model.ListedPackages.Single().IconUrl);
+            }
+        }
+
+        public class TheGetAvatarAction : TestContainer
+        {
+            [Fact]
+            public async Task ReturnsNotFound()
+            {
+                // Arrange
+                GetMock<IGravatarProxyService>()
+                    .Setup(g => g.GetAvatarOrNullAsync("username", 100))
+                    .ReturnsAsync(() => null);
+
+                var controller = GetController<UsersController>();
+
+                // Act
+                var result = await controller.GetAvatar("username", 100);
+
+                // Assert
+                ResultAssert.IsNotFound(result);
+                GetMock<IGravatarProxyService>()
+                    .Verify(g => g.GetAvatarOrNullAsync("username", 100), Times.Once);
+            }
+
+            [Fact]
+            public async Task ReturnsFileResult()
+            {
+                // Arrange
+                using (var stream = new MemoryStream(Encoding.ASCII.GetBytes("Hello World")))
+                {
+                    GetMock<IGravatarProxyService>()
+                        .Setup(g => g.GetAvatarOrNullAsync("username", 100))
+                        .ReturnsAsync(() => new GravatarProxyResult(stream, "image/png"));
+
+                    var controller = GetController<UsersController>();
+
+                    // Act
+                    var result = await controller.GetAvatar("username", 100);
+
+                    // Assert
+                    var fileResult = Assert.IsType<FileStreamResult>(result);
+
+                    string contentString;
+                    using (var reader = new StreamReader(fileResult.FileStream))
+                    {
+                        contentString = reader.ReadToEnd();
+                    }
+
+                    Assert.Equal("image/png", fileResult.ContentType);
+                    Assert.Equal("Hello World", contentString);
+                    GetMock<IGravatarProxyService>()
+                        .Verify(g => g.GetAvatarOrNullAsync("username", 100), Times.Once);
+                }
+            }
+
+            [Fact]
+            public async Task DefaultImageSize()
+            {
+                // Arrange
+                GetMock<IGravatarProxyService>()
+                    .Setup(g => g.GetAvatarOrNullAsync("username", 64))
+                    .ReturnsAsync(() => null);
+
+                var controller = GetController<UsersController>();
+
+                // Act
+                await controller.GetAvatar("username");
+
+                // Assert
+                GetMock<IGravatarProxyService>()
+                    .Verify(g => g.GetAvatarOrNullAsync("username", 64), Times.Once);
+            }
+
+            [Fact]
+            public async Task SupportsNullImageSize()
+            {
+                // Arrange
+                GetMock<IGravatarProxyService>()
+                    .Setup(g => g.GetAvatarOrNullAsync("username", 64))
+                    .ReturnsAsync(() => null);
+
+                var controller = GetController<UsersController>();
+
+                // Act
+                await controller.GetAvatar("username", imageSize: null);
+
+                // Assert
+                GetMock<IGravatarProxyService>()
+                    .Verify(g => g.GetAvatarOrNullAsync("username", 64), Times.Once);
             }
         }
     }

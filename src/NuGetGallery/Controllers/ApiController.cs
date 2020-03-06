@@ -764,10 +764,6 @@ namespace NuGetGallery
                             var warnings = new List<IValidationMessage>();
                             warnings.AddRange(beforeValidationResult.Warnings);
                             warnings.AddRange(afterValidationResult.Warnings);
-                            if (package.SemVerLevelKey == SemVerLevelKey.SemVer2)
-                            {
-                                warnings.Add(new PlainTextOnlyValidationMessage(Strings.WarningSemVer2PackagePushed));
-                            }
 
                             return new HttpStatusCodeWithServerWarningResult(HttpStatusCode.Created, warnings);
                         }
@@ -994,7 +990,7 @@ namespace NuGetGallery
         {
             return new JsonResult
             {
-                Data = (await _autocompletePackageIdsQuery.Execute(partialId, includePrerelease, semVerLevel)).ToArray(),
+                Data = await _autocompletePackageIdsQuery.Execute(partialId, includePrerelease, semVerLevel),
                 JsonRequestBehavior = JsonRequestBehavior.AllowGet
             };
         }
@@ -1008,7 +1004,7 @@ namespace NuGetGallery
         {
             return new JsonResult
             {
-                Data = (await _autocompletePackageVersionsQuery.Execute(id, includePrerelease, semVerLevel)).ToArray(),
+                Data = await _autocompletePackageVersionsQuery.Execute(id, includePrerelease, semVerLevel),
                 JsonRequestBehavior = JsonRequestBehavior.AllowGet
             };
         }

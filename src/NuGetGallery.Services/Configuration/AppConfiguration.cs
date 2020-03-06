@@ -134,8 +134,8 @@ namespace NuGetGallery.Configuration
         /// <summary>
         /// Gets the storage mechanism used by this instance of the gallery
         /// </summary>
-        [DefaultValue(StorageType.NotSpecified)]
-        public StorageType StorageType { get; set; }
+        [DefaultValue(NuGetGallery.Configuration.StorageType.NotSpecified)]
+        public string StorageType { get; set; }
 
         /// <summary>
         /// Gets the URI of the SMTP host to use. Or null if SMTP is not being used
@@ -194,6 +194,11 @@ namespace NuGetGallery.Configuration
         public double AppInsightsSamplingPercentage { get; set; }
 
         /// <summary>
+        /// Gets the Application Insights heartbeat interval in seconds associated with this deployment.
+        /// </summary>
+        public int AppInsightsHeartbeatIntervalSeconds { get; set; }
+
+        /// <summary>
         /// Gets the protocol-independent site root
         /// </summary>
         public string SiteRoot { get; set; }
@@ -212,11 +217,6 @@ namespace NuGetGallery.Configuration
         /// Gets the Google Analytics Property ID being used, if any.
         /// </summary>
         public string GoogleAnalyticsPropertyId { get; set; }
-
-        /// <summary>
-        /// Gets a boolean indicating if perf logs should be collected
-        /// </summary>
-        public bool CollectPerfLogs { get; set; }
 
         /// <summary>
         /// Gets a boolean indicating if the search index should be updated automatically in the background
@@ -356,10 +356,6 @@ namespace NuGetGallery.Configuration
 
         public bool BlockSearchEngineIndexing { get; set; }
 
-        [DefaultValue(null)]
-        [TypeConverter(typeof(StringArrayConverter))]
-        public string[] RedirectedCuratedFeeds { get; set; }
-
         public bool AsynchronousEmailServiceEnabled { get; set; }
 
         public bool AsynchronousDeleteAccountServiceEnabled { get; set; }
@@ -402,5 +398,10 @@ namespace NuGetGallery.Configuration
 
         [DefaultValue("")]
         public string EmbeddedIconUrlTemplate { get; set; }
+
+        [DefaultValue(null)]
+        public string DeploymentLabel { get; set; }
+
+        public string UsabillaFeedbackButtonId { get; set; }
     }
 }

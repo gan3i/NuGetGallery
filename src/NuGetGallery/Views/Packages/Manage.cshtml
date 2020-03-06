@@ -67,7 +67,7 @@
         // Set up owners section
         var packageId = "@Model.Id";
         var isUserAnAdmin = "@Model.IsCurrentUserAnAdmin";
-        var packageUrl = "@Url.Package(Model.Id)";
+        var packageUrl = "@Url.ManagePackage(new TrivialPackageVersionModel(Model.Id, Model.Version))";
         var getPackageOwnersUrl = "@Url.GetPackageOwners()";
         var addPackageOwnerUrl = "@Url.AddPackageOwner()";
         var removePackageOwnerUrl = "@Url.RemovePackageOwner()";
@@ -93,12 +93,12 @@
             // Set up documentation section
             var readMeModel = {
                 "Versions": @Html.Raw(JsonConvert.SerializeObject(Model.VersionReadMeStateDictionary)),
-                "Edit": @Html.Raw(JsonConvert.SerializeObject(Model.ReadMe))
+                "Edit": @Html.Raw(Json.Encode(Model.ReadMe))
             };
 
             var readMeModelVersion = readMeModel.Versions['@Model.Version'];
             if (readMeModelVersion) {
-                readMeModelVersion.readMe = @Html.Raw(JsonConvert.SerializeObject(Model.ReadMe));
+                readMeModelVersion.readMe = @Html.Raw(Json.Encode(Model.ReadMe));
             }
 
             EditReadMeManager.init(

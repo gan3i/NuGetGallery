@@ -34,7 +34,21 @@
                 CommandPrefix = "> ",
                 InstallPackageCommand = string.Format("dotnet tool install --global {0} --version {1}", Model.Id, Model.Version),
                 AlertLevel = AlertLevel.Info,
-                AlertMessage = string.Format("This package contains a <a href=\"{0}\">.NET Core Global Tool</a> you can call from the shell/command line.", "https://aka.ms/global-tools"),
+                AlertMessage = "This package contains a <a href='https://aka.ms/global-tools'>.NET Core Global Tool</a> you can call from the shell/command line.",
+            }
+        };
+    }
+    else if (Model.IsDotnetNewTemplatePackageType)
+    {
+        packageManagers = new PackageManagerViewModel[]
+        {
+            new PackageManagerViewModel(".NET CLI")
+            {
+                Id = "dotnet-cli",
+                CommandPrefix = "> ",
+                InstallPackageCommand = string.Format("dotnet new --install {0}::{1}", Model.Id, Model.Version),
+                AlertLevel = AlertLevel.Info,
+                AlertMessage = "This package contains a <a href='https://aka.ms/dotnet-new'>.NET Core Template Package</a> you can call from the shell/command line.",
             }
         };
     }
@@ -205,7 +219,7 @@
 
             @if (!Model.Deleted && !String.IsNullOrWhiteSpace(Model.Description))
             {
-                <p>@Html.PreFormattedText(Model.Description)</p>
+                <p>@Html.PreFormattedText(Model.Description, Config)</p>
             }
 
             @if (Model.Validating)
@@ -321,11 +335,6 @@
                 )
             }
 
-            @if (Model.IsSemVer2)
-            {
-                @ViewHelpers.AlertIsSemVer2Package(Model.HasSemVer2Version, Model.HasSemVer2Dependency)
-            }
-
             @if (Model.CanDisplayPrivateMetadata && showSymbolsPackageStatus)
             {
                 if (Model.LatestSymbolsPackage.StatusKey == PackageStatus.Validating)
@@ -333,7 +342,7 @@
                     @ViewHelpers.AlertWarning(
                         @<text>
                             <strong>The symbols for this package have not been indexed yet.</strong> They are not available
-                            for download from the NuGet.org symbol server. Symbols will be available for download after both validation and indexing are complete. 
+                            for download from the NuGet.org symbol server. Symbols will be available for download after both validation and indexing are complete.
                             Symbols validation and indexing may take up to an hour. <a href="https://aka.ms/NuGetSymbolsPackageValidation">Read more</a>.
 
                         @AppendAvailableSymbolsMessage(hasSymbolsPackageAvailable)
@@ -432,6 +441,10 @@
                         </h2>
                     </div>
                     <div id="readme-container" class="collapse in">
+                        @if (Model.ReadMeImagesRewritten && Model.CanDisplayPrivateMetadata)
+                        {
+                            @ViewHelpers.AlertWarning(@<text>This documentation had some images automatically rewritten to use secure links and may be broken.</text>);
+                        }
                         <div id="readme-less" class="collapse in">
                             @Html.Raw(Model.ReadMeHtml)
                         </div>
@@ -452,7 +465,7 @@
                 {
                     <h2>Release Notes</h2>
 
-                    <p>@Html.PreFormattedText(Model.ReleaseNotes)</p>
+                    <p>@Html.PreFormattedText(Model.ReleaseNotes, Config)</p>
                 }
 
                 if (Model.Dependencies.DependencySets == null)
@@ -563,6 +576,11 @@
                             }
                             </tbody>
                         </table>
+                        <p>
+                            Read more about the GitHub Usage information on
+
+                            <a href="https://docs.microsoft.com/en-us/nuget/consume-packages/finding-and-choosing-packages#evaluating-packages" title="Read more about the GitHub Usage information">our documentation</a>.
+                        </p>
                     </div>
                 }
                 else
@@ -962,24 +980,30 @@
             <h2>Owners</h2>
             <ul class="list-unstyled owner-list">
                 @if (!Model.Owners.Any())
-    {
-            @ViewHelpers.AlertWarning(@<text>This package has no owners and is not being actively maintained.</text>)
-}
-else
-{
-foreach (var owner in Model.Owners)
-{
-            <li>
-                @if (!String.IsNullOrEmpty(owner.EmailAddress))
-    {
-            <a href="@Url.User(owner.Username)" title="@owner.Username">@ViewHelpers.GravatarImage(owner.EmailAddress, owner.Username, GalleryConstants.GravatarElementSize)</a>
-}
-                <a href="@Url.User(owner.Username)" title="@owner.Username">
-                    @owner.Username
-                </a>
-            </li>
-}
-}
+                {
+                    @ViewHelpers.AlertWarning(@<text>This package has no owners and is not being actively maintained.</text>)
+                }
+                else
+                {
+                    foreach (var owner in Model.Owners)
+                    {
+                        <li>
+                            @if (!String.IsNullOrEmpty(owner.EmailAddress))
+                            {
+                                <a href="@Url.User(owner.Username)" title="@owner.Username">
+                                    @ViewHelpers.GravatarImage(
+                                        Url,
+                                        owner.EmailAddress,
+                                        owner.Username,
+                                        GalleryConstants.GravatarElementSize)
+                                </a>
+                            }
+                            <a href="@Url.User(owner.Username)" title="@owner.Username">
+                                @owner.Username
+                            </a>
+                        </li>
+                    }
+                }
             </ul>
 
             @if (!Model.Deleted)

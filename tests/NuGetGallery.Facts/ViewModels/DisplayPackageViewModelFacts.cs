@@ -58,7 +58,7 @@ namespace NuGetGallery.ViewModels
                 }
             };
 
-            var model = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var model = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
             Assert.Equal(expectedKind, model.RepositoryType);
             Assert.Equal(expectedUrl, model.RepositoryUrl);
         }
@@ -100,7 +100,7 @@ namespace NuGetGallery.ViewModels
                 }
             };
 
-            var model = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var model = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
             Assert.Equal(expected, model.ProjectUrl);
         }
 
@@ -130,7 +130,7 @@ namespace NuGetGallery.ViewModels
                 }
             };
 
-            var model = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var model = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
             Assert.Equal(expected, model.LicenseUrl);
         }
 
@@ -149,7 +149,7 @@ namespace NuGetGallery.ViewModels
                 }
             };
 
-            var packageViewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var packageViewModel = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
             Assert.Equal(new string[] { "l1", "l2", "l3", "l4", "l5" }, packageViewModel.LicenseNames);
         }
 
@@ -177,7 +177,7 @@ namespace NuGetGallery.ViewModels
                     new Package { Version = "1.0.10", PackageRegistration = package.PackageRegistration }
                 };
 
-            var packageVersions = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null)
+            var packageVersions = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null)
                 .PackageVersions.ToList();
 
             // Descending
@@ -229,7 +229,7 @@ namespace NuGetGallery.ViewModels
                 });
             }
 
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
 
             // Descending
             Assert.NotNull(viewModel.LatestSymbolsPackage);
@@ -267,7 +267,7 @@ namespace NuGetGallery.ViewModels
 
             package.SymbolPackages = symbolPackageList;
 
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
 
             Assert.Equal(symbolPackageList[0], viewModel.LatestSymbolsPackage);
         }
@@ -305,7 +305,7 @@ namespace NuGetGallery.ViewModels
                 };
 
             // Act
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
 
             // Assert
             Assert.Equal(daysSinceFirstPackageCreated, viewModel.TotalDaysSinceCreated);
@@ -334,7 +334,7 @@ namespace NuGetGallery.ViewModels
 
             package.PackageRegistration.Packages = new[] { package };
 
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
 
             // Act
             var label = viewModel.DownloadsPerDayLabel;
@@ -366,7 +366,7 @@ namespace NuGetGallery.ViewModels
 
             package.PackageRegistration.Packages = new[] { package };
 
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
 
             // Act
             var label = viewModel.DownloadsPerDayLabel;
@@ -414,7 +414,7 @@ namespace NuGetGallery.ViewModels
 
             package.PackageRegistration.Packages = new[] { package, otherPackage };
 
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
 
             // Act
             var hasNewerPrerelease = viewModel.HasNewerPrerelease;
@@ -461,7 +461,7 @@ namespace NuGetGallery.ViewModels
 
             package.PackageRegistration.Packages = new[] { package, otherPackage };
 
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
 
             // Act
             var hasNewerRelease = viewModel.HasNewerRelease;
@@ -500,7 +500,7 @@ namespace NuGetGallery.ViewModels
 
             package.PackageRegistration.Packages = new[] { package, otherPackage };
 
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
 
             // Act
             var hasNewerPrerelease = viewModel.HasNewerPrerelease;
@@ -540,7 +540,7 @@ namespace NuGetGallery.ViewModels
 
             package.PackageRegistration.Packages = new[] { package, otherPackage };
 
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
+            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, packageKeyToDeprecation: null, readmeHtml: null);
 
             // Act
             var hasNewerRelease = viewModel.HasNewerRelease;
@@ -549,89 +549,11 @@ namespace NuGetGallery.ViewModels
             Assert.False(hasNewerRelease);
         }
 
-        [Theory]
-        [InlineData(null)]
-        [InlineData("")]
-        public void HasSemVer2DependencyIsFalseWhenInvalidDependencyVersionRange(string versionSpec)
-        {
-            // Arrange
-            var package = CreateTestPackage("1.0.0", dependencyVersion: versionSpec);
-
-            // Act
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
-
-            // Assert
-            Assert.False(viewModel.HasSemVer2Dependency);
-        }
-
-        [Theory]
-        [InlineData("2.0.0-alpha.1")]
-        [InlineData("2.0.0+metadata")]
-        [InlineData("2.0.0-alpha+metadata")]
-        public void HasSemVer2DependencyWhenSemVer2DependencyVersionSpec(string versionSpec)
-        {
-            // Arrange
-            var package = CreateTestPackage("1.0.0", dependencyVersion: versionSpec);
-
-            // Act
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
-
-            // Assert
-            Assert.True(viewModel.HasSemVer2Dependency);
-        }
-
-        [Theory]
-        [InlineData("2.0.0-alpha")]
-        [InlineData("2.0.0")]
-        [InlineData("2.0.0.0")]
-        public void HasSemVer2DependencyIsFalseWhenNonSemVer2DependencyVersionSpec(string versionSpec)
-        {
-            // Arrange
-            var package = CreateTestPackage("1.0.0", dependencyVersion: versionSpec);
-
-            // Act
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
-
-            // Assert
-            Assert.False(viewModel.HasSemVer2Dependency);
-        }
-
-        [Theory]
-        [InlineData("2.0.0-alpha")]
-        [InlineData("2.0.0")]
-        [InlineData("2.0.0.0")]
-        public void HasSemVer2VersionIsFalseWhenNonSemVer2Version(string version)
-        {
-            // Arrange
-            var package = CreateTestPackage(version);
-
-            // Act
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
-
-            // Assert
-            Assert.False(viewModel.HasSemVer2Version);
-        }
-
-        [Theory]
-        [InlineData("2.0.0-alpha.1")]
-        [InlineData("2.0.0+metadata")]
-        [InlineData("2.0.0-alpha+metadata")]
-        public void HasSemVer2VersionIsTrueWhenSemVer2Version(string version)
-        {
-            // Arrange
-            var package = CreateTestPackage(version);
-
-            // Act
-            var viewModel = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: null, readmeHtml: null);
-
-            // Assert
-            Assert.True(viewModel.HasSemVer2Version);
-        }
-
         private Package CreateTestPackage(string version, string dependencyVersion = null)
         {
             var package = new Package
             {
+                Key = 123,
                 Version = version,
                 PackageRegistration = new PackageRegistration
                 {
@@ -732,7 +654,7 @@ namespace NuGetGallery.ViewModels
             [MemberData(nameof(Data))]
             public void ReturnsExpectedUser(Package package, User currentUser, string expected)
             {
-                var model = CreateDisplayPackageViewModel(package, currentUser, deprecation: null, readmeHtml: null);
+                var model = CreateDisplayPackageViewModel(package, currentUser, packageKeyToDeprecation: null, readmeHtml: null);
 
                 Assert.Equal(expected, model.PushedBy);
             }
@@ -754,7 +676,8 @@ namespace NuGetGallery.ViewModels
             // Arrange
             var deprecation = new PackageDeprecation
             {
-                CustomMessage = "hello"
+                Status = status,
+                CustomMessage = "hello",
             };
 
             var alternateRegistrationId = "alternateRegistrationId";
@@ -788,15 +711,17 @@ namespace NuGetGallery.ViewModels
 
             var package = CreateTestPackage("1.0.0");
 
-            var linkedDeprecation = new PackageDeprecation
+            var packageKeyToDeprecation = new Dictionary<int, PackageDeprecation>
             {
-                Status = status
+                { 123, deprecation }
             };
 
-            package.Deprecations.Add(linkedDeprecation);
-
             // Act
-            var model = CreateDisplayPackageViewModel(package, currentUser: null, deprecation: deprecation, readmeHtml: null);
+            var model = CreateDisplayPackageViewModel(
+                package,
+                currentUser: null,
+                packageKeyToDeprecation: packageKeyToDeprecation,
+                readmeHtml: null);
 
             // Assert
             Assert.Equal(status, model.DeprecationStatus);
@@ -825,13 +750,20 @@ namespace NuGetGallery.ViewModels
             Assert.Null(versionModel.CustomMessage);
         }
 
-        private static DisplayPackageViewModel CreateDisplayPackageViewModel(Package package, User currentUser = null, PackageDeprecation deprecation = null, string readmeHtml = null)
+        private static DisplayPackageViewModel CreateDisplayPackageViewModel(
+            Package package,
+            User currentUser = null,
+            Dictionary<int, PackageDeprecation> packageKeyToDeprecation = null,
+            string readmeHtml = null)
         {
+            var allVersions = (IReadOnlyCollection<Package>)package.PackageRegistration.Packages;
+
             return new DisplayPackageViewModelFactory(Mock.Of<IIconUrlProvider>()).Create(
                 package,
+                allVersions,
                 currentUser: currentUser,
-                deprecation: deprecation,
-                readmeHtml: readmeHtml);
+                packageKeyToDeprecation: packageKeyToDeprecation,
+                readmeResult: new RenderedReadMeResult { Content = readmeHtml });
         }
     }
 }

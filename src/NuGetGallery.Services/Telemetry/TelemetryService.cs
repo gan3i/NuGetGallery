@@ -220,21 +220,10 @@ namespace NuGetGallery
         public const string TestBucket = "TestBucket";
         public const string TestPercentage = "TestPercentage";
 
-        public TelemetryService(IDiagnosticsService diagnosticsService, ITelemetryClient telemetryClient = null)
+        public TelemetryService(IDiagnosticsSource diagnosticsSource, ITelemetryClient telemetryClient)
         {
-            if (diagnosticsService == null)
-            {
-                throw new ArgumentNullException(nameof(diagnosticsService));
-            }
-
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
-
-            _diagnosticsSource = diagnosticsService.GetSource("TelemetryService");
-        }
-
-        // Used by ODataQueryVerifier. Should consider refactoring to make this non-static.
-        public TelemetryService() : this(new DiagnosticsService(), TelemetryClientWrapper.Instance)
-        {
+            _diagnosticsSource = diagnosticsSource ?? throw new ArgumentNullException(nameof(diagnosticsSource));
         }
 
         public void TraceException(Exception exception)
@@ -333,7 +322,8 @@ namespace NuGetGallery
                 throw new ArgumentNullException(nameof(readMeSourceType));
             }
 
-            TrackMetric(Events.PackageReadMeChanged, 1, properties => {
+            TrackMetric(Events.PackageReadMeChanged, 1, properties =>
+            {
                 properties.Add(PackageId, package.PackageRegistration.Id);
                 properties.Add(PackageVersion, package.NormalizedVersion);
                 properties.Add(ReadMeSourceType, readMeSourceType);
@@ -355,7 +345,8 @@ namespace NuGetGallery
         {
             var normalizedVersion = version?.ToNormalizedString();
 
-            TrackMetric(Events.PackagePushFailure, 1, properties => {
+            TrackMetric(Events.PackagePushFailure, 1, properties =>
+            {
                 properties.Add(ClientVersion, GetClientVersion());
                 properties.Add(ProtocolVersion, GetProtocolVersion());
                 properties.Add(PackageId, id ?? ValueUnknown);
@@ -401,11 +392,14 @@ namespace NuGetGallery
             TrackMetricForAccountActivity(Events.NewUserRegistration, user, credential);
         }
 
-        public void TrackUserChangedMultiFactorAuthentication(User user, bool enabledMultiFactorAuth)
+        public void TrackUserChangedMultiFactorAuthentication(User user, bool enabledMultiFactorAuth, string referrer = null)
         {
             TrackMetricForAccountActivity(enabledMultiFactorAuth ? Events.UserMultiFactorAuthenticationEnabled : Events.UserMultiFactorAuthenticationDisabled,
                 user,
-                credential: null);
+                credential: null,
+                addProperties: addProperties => {
+                    addProperties.Add("Referrer", referrer);
+                });
         }
 
         public void TrackNewCredentialCreated(User user, Credential credential)
@@ -415,7 +409,9 @@ namespace NuGetGallery
 
         public void TrackUserLogin(User user, Credential credential, bool wasMultiFactorAuthenticated)
         {
-            TrackMetricForAccountActivity(Events.CredentialUsed, user, credential, wasMultiFactorAuthenticated);
+            TrackMetricForAccountActivity(Events.CredentialUsed, user, credential, addProperties => {
+                addProperties.Add(WasMultiFactorAuthenticated, wasMultiFactorAuthenticated.ToString());
+            });
         }
 
         public void TrackUserPackageDeleteExecuted(int packageKey, string packageId, string packageVersion, ReportPackageReason reason, bool success)
@@ -430,7 +426,8 @@ namespace NuGetGallery
                 throw new ArgumentNullException(nameof(packageVersion));
             }
 
-            TrackMetric(Events.UserPackageDeleteExecuted, 1, properties => {
+            TrackMetric(Events.UserPackageDeleteExecuted, 1, properties =>
+            {
                 properties.Add(PackageKey, packageKey.ToString());
                 properties.Add(PackageId, packageId);
                 properties.Add(PackageVersion, packageVersion);
@@ -485,7 +482,7 @@ namespace NuGetGallery
             bool hasCustomMessage)
         {
             TrackMetricForPackageVersions(
-                Events.PackageDeprecate, 
+                Events.PackageDeprecate,
                 packages,
                 properties =>
                 {
@@ -499,10 +496,11 @@ namespace NuGetGallery
         public void TrackPackageMetadataComplianceError(string packageId, string packageVersion, IEnumerable<string> complianceFailures)
         {
             TrackMetricForPackage(
-                Events.PackageMetadataComplianceError, 
-                packageId, 
+                Events.PackageMetadataComplianceError,
+                packageId,
                 packageVersion,
-                properties => {
+                properties =>
+                {
                     properties.Add(ComplianceFailures, JsonConvert.SerializeObject(complianceFailures, _defaultJsonSerializerSettings));
                 });
         }
@@ -513,7 +511,8 @@ namespace NuGetGallery
                 Events.PackageMetadataComplianceWarning,
                 packageId,
                 packageVersion,
-                properties => {
+                properties =>
+                {
                     properties.Add(ComplianceWarnings, JsonConvert.SerializeObject(complianceWarnings, _defaultJsonSerializerSettings));
                 });
         }
@@ -521,8 +520,8 @@ namespace NuGetGallery
         public void TrackPackageOwnershipAutomaticallyAdded(string packageId, string packageVersion)
         {
             TrackMetricForPackage(
-                Events.PackageOwnershipAutomaticallyAdded, 
-                packageId, 
+                Events.PackageOwnershipAutomaticallyAdded,
+                packageId,
                 packageVersion);
         }
 
@@ -548,7 +547,8 @@ namespace NuGetGallery
                 throw new ArgumentException(ServicesStrings.ArgumentCannotBeNullOrEmpty, nameof(packageId));
             }
 
-            TrackMetric(Events.PackageRegistrationRequiredSignerSet, 1, properties => {
+            TrackMetric(Events.PackageRegistrationRequiredSignerSet, 1, properties =>
+            {
                 properties.Add(PackageId, packageId);
             });
         }
@@ -586,19 +586,23 @@ namespace NuGetGallery
             TrackMetricForSymbolPackage(Events.SymbolPackageRevalidate, packageId, packageVersion);
         }
 
-        private void TrackMetricForAccountActivity(string eventName, User user, Credential credential, bool wasMultiFactorAuthenticated = false)
+        private void TrackMetricForAccountActivity(string eventName,
+            User user,
+            Credential credential,
+            Action<Dictionary<string, string>> addProperties = null)
         {
             if (user == null)
             {
                 throw new ArgumentNullException(nameof(user));
             }
 
-            TrackMetric(eventName, 1, properties => {
+            TrackMetric(eventName, 1, properties =>
+            {
                 properties.Add(ClientVersion, GetClientVersion());
                 properties.Add(ProtocolVersion, GetProtocolVersion());
                 properties.Add(AccountCreationDate, GetAccountCreationDate(user));
                 properties.Add(RegistrationMethod, GetRegistrationMethod(credential));
-                properties.Add(WasMultiFactorAuthenticated, wasMultiFactorAuthenticated.ToString());
+                addProperties?.Invoke(properties);
             });
         }
 
@@ -609,7 +613,8 @@ namespace NuGetGallery
                 throw new ArgumentException(ServicesStrings.ArgumentCannotBeNullOrEmpty, nameof(thumbprint));
             }
 
-            TrackMetric(eventName, 1, properties => {
+            TrackMetric(eventName, 1, properties =>
+            {
                 properties.Add(Sha256Thumbprint, thumbprint);
             });
         }
@@ -656,7 +661,8 @@ namespace NuGetGallery
             string packageVersion,
             Action<Dictionary<string, string>> addProperties = null)
         {
-            TrackMetric(metricName, 1, properties => {
+            TrackMetric(metricName, 1, properties =>
+            {
                 properties.Add(ClientVersion, GetClientVersion());
                 properties.Add(ProtocolVersion, GetProtocolVersion());
                 properties.Add(ClientInformation, GetClientInformation());
@@ -684,7 +690,8 @@ namespace NuGetGallery
                 throw new ArgumentNullException(nameof(identity));
             }
 
-            TrackMetric(metricName, 1, properties => {
+            TrackMetric(metricName, 1, properties =>
+            {
                 properties.Add(ClientVersion, GetClientVersion());
                 properties.Add(ProtocolVersion, GetProtocolVersion());
                 properties.Add(ClientInformation, GetClientInformation());
@@ -721,7 +728,8 @@ namespace NuGetGallery
             string packageVersion,
             Action<Dictionary<string, string>> addProperties = null)
         {
-            TrackMetric(metricName, 1, properties => {
+            TrackMetric(metricName, 1, properties =>
+            {
                 properties.Add(ClientVersion, GetClientVersion());
                 properties.Add(ProtocolVersion, GetProtocolVersion());
                 properties.Add(ClientInformation, GetClientInformation());
@@ -754,7 +762,8 @@ namespace NuGetGallery
             IReadOnlyList<string> packageVersions,
             Action<Dictionary<string, string>> addProperties = null)
         {
-            TrackMetric(metricName, packageVersions.Count(), properties => {
+            TrackMetric(metricName, packageVersions.Count(), properties =>
+            {
                 properties.Add(ClientVersion, GetClientVersion());
                 properties.Add(ProtocolVersion, GetProtocolVersion());
                 properties.Add(ClientInformation, GetClientInformation());
@@ -773,7 +782,8 @@ namespace NuGetGallery
 
             var hours = details.SinceCreated.TotalHours;
 
-            TrackMetric(Events.UserPackageDeleteCheckedAfterHours, hours, properties => {
+            TrackMetric(Events.UserPackageDeleteCheckedAfterHours, hours, properties =>
+            {
                 properties.Add(Outcome, outcome.ToString());
                 properties.Add(PackageKey, details.PackageKey.ToString());
                 properties.Add(PackageId, details.PackageId);
@@ -842,7 +852,8 @@ namespace NuGetGallery
                 throw new ArgumentNullException(nameof(deletedBy));
             }
 
-            TrackMetric(Events.AccountDeleteCompleted, 1, properties => {
+            TrackMetric(Events.AccountDeleteCompleted, 1, properties =>
+            {
                 properties.Add(AccountDeletedByRole, BuildArrayProperty(deletedBy.Roles?.Select(role => role.Name) ?? new string[0]));
                 properties.Add(AccountIsSelfDeleted, $"{deletedUser.Key == deletedBy.Key}");
                 properties.Add(AccountDeletedIsOrganization, $"{deletedUser is Organization}");
@@ -856,8 +867,9 @@ namespace NuGetGallery
             {
                 throw new ArgumentNullException(nameof(user));
             }
-           
-            TrackMetric(Events.AccountDeleteRequested, 1, properties => {
+
+            TrackMetric(Events.AccountDeleteRequested, 1, properties =>
+            {
                 properties.Add(CreatedDateForAccountToBeDeleted, $"{user.CreatedUtc}");
             });
         }
@@ -879,7 +891,8 @@ namespace NuGetGallery
             int checkListLength,
             TimeSpan checkListCacheExpireTime)
         {
-            TrackMetric(Events.TyposquattingCheckResultAndTotalTimeInMs, totalTime.TotalMilliseconds, properties => {
+            TrackMetric(Events.TyposquattingCheckResultAndTotalTimeInMs, totalTime.TotalMilliseconds, properties =>
+            {
                 properties.Add(PackageId, packageId);
                 properties.Add(WasUploadBlocked, wasUploadBlocked.ToString());
                 properties.Add(CollisionPackageIds, BuildArrayProperty(collisionPackageIds.Take(TyposquattingCollisionIdsMaxPropertyValue)));
@@ -892,21 +905,24 @@ namespace NuGetGallery
 
         public void TrackMetricForTyposquattingChecklistRetrievalTime(string packageId, TimeSpan checklistRetrievalTime)
         {
-            TrackMetric(Events.TyposquattingChecklistRetrievalTimeInMs, checklistRetrievalTime.TotalMilliseconds, properties => {
+            TrackMetric(Events.TyposquattingChecklistRetrievalTimeInMs, checklistRetrievalTime.TotalMilliseconds, properties =>
+            {
                 properties.Add(PackageId, packageId);
             });
         }
 
         public void TrackMetricForTyposquattingAlgorithmProcessingTime(string packageId, TimeSpan algorithmProcessingTime)
         {
-            TrackMetric(Events.TyposquattingAlgorithmProcessingTimeInMs, algorithmProcessingTime.TotalMilliseconds, properties => {
+            TrackMetric(Events.TyposquattingAlgorithmProcessingTimeInMs, algorithmProcessingTime.TotalMilliseconds, properties =>
+            {
                 properties.Add(PackageId, packageId);
             });
         }
 
         public void TrackMetricForTyposquattingOwnersCheckTime(string packageId, TimeSpan ownersCheckTime)
         {
-            TrackMetric(Events.TyposquattingOwnersCheckTimeInMs, ownersCheckTime.TotalMilliseconds, properties => {
+            TrackMetric(Events.TyposquattingOwnersCheckTimeInMs, ownersCheckTime.TotalMilliseconds, properties =>
+            {
                 properties.Add(PackageId, packageId);
             });
         }
@@ -928,7 +944,8 @@ namespace NuGetGallery
 
         public void TrackMetricForSearchExecutionDuration(string url, TimeSpan duration, bool executionSuccessStatus)
         {
-            TrackMetric(Events.SearchExecutionDuration, duration.TotalMilliseconds, properties => {
+            TrackMetric(Events.SearchExecutionDuration, duration.TotalMilliseconds, properties =>
+            {
                 properties.Add(SearchUrl, url);
                 properties.Add(SearchSuccessExecutionStatus, executionSuccessStatus.ToString());
             });
@@ -936,7 +953,8 @@ namespace NuGetGallery
 
         public void TrackMetricForSearchCircuitBreakerOnBreak(string searchName, Exception exception, HttpResponseMessage responseMessage, string correlationId, string uri)
         {
-            TrackMetric(Events.SearchCircuitBreakerOnBreak, 1, properties => {
+            TrackMetric(Events.SearchCircuitBreakerOnBreak, 1, properties =>
+            {
                 properties.Add(SearchName, searchName);
                 properties.Add(SearchException, exception?.ToString() ?? string.Empty);
                 properties.Add(SearchHttpResponseCode, responseMessage?.StatusCode.ToString() ?? string.Empty);
@@ -947,7 +965,8 @@ namespace NuGetGallery
 
         public void TrackMetricForSearchCircuitBreakerOnReset(string searchName, string correlationId, string uri)
         {
-            TrackMetric(Events.SearchCircuitBreakerOnReset, 1, properties => {
+            TrackMetric(Events.SearchCircuitBreakerOnReset, 1, properties =>
+            {
                 properties.Add(SearchName, searchName);
                 properties.Add(SearchPollyCorrelationId, correlationId);
                 properties.Add(SearchUrl, uri);
@@ -956,7 +975,8 @@ namespace NuGetGallery
 
         public void TrackMetricForSearchOnRetry(string searchName, Exception exception, string correlationId, string uri, string circuitBreakerStatus)
         {
-            TrackMetric(Events.SearchOnRetry, 1, properties => {
+            TrackMetric(Events.SearchOnRetry, 1, properties =>
+            {
                 properties.Add(SearchName, searchName);
                 properties.Add(SearchException, exception?.ToString() ?? string.Empty);
                 properties.Add(SearchPollyCorrelationId, correlationId);
@@ -967,7 +987,8 @@ namespace NuGetGallery
 
         public void TrackMetricForSearchOnTimeout(string searchName, string correlationId, string uri, string circuitBreakerStatus)
         {
-            TrackMetric(Events.SearchOnTimeout, 1, properties => {
+            TrackMetric(Events.SearchOnTimeout, 1, properties =>
+            {
                 properties.Add(SearchName, searchName);
                 properties.Add(SearchPollyCorrelationId, correlationId);
                 properties.Add(SearchUrl, uri);
@@ -985,7 +1006,8 @@ namespace NuGetGallery
             bool hasComments,
             bool hasEmailAddress)
         {
-            TrackMetric(Events.SearchSideBySideFeedback, 1, properties => {
+            TrackMetric(Events.SearchSideBySideFeedback, 1, properties =>
+            {
                 properties.Add(SearchTerm, searchTerm);
                 properties.Add(OldHits, oldHits.ToString());
                 properties.Add(NewHits, newHits.ToString());
@@ -1004,7 +1026,8 @@ namespace NuGetGallery
             bool newSuccess,
             int newHits)
         {
-            TrackMetric(Events.SearchSideBySide, 1, properties => {
+            TrackMetric(Events.SearchSideBySide, 1, properties =>
+            {
                 properties.Add(SearchTerm, searchTerm);
                 properties.Add(OldSuccess, oldSuccess.ToString());
                 properties.Add(OldHits, oldHits.ToString());
@@ -1017,7 +1040,8 @@ namespace NuGetGallery
             int schemaVersion,
             int previewSearchBucket)
         {
-            TrackMetric(Events.ABTestEnrollmentInitialized, 1, properties => {
+            TrackMetric(Events.ABTestEnrollmentInitialized, 1, properties =>
+            {
                 properties.Add(SchemaVersion, schemaVersion.ToString());
                 properties.Add(PreviewSearchBucket, previewSearchBucket.ToString());
             });
@@ -1030,7 +1054,8 @@ namespace NuGetGallery
             int testBucket,
             int testPercentage)
         {
-            TrackMetric(Events.ABTestEvaluated, 1, properties => {
+            TrackMetric(Events.ABTestEvaluated, 1, properties =>
+            {
                 properties.Add(TestName, name);
                 properties.Add(IsActive, isActive.ToString());
                 properties.Add(IsAuthenticated, isAuthenticated.ToString());

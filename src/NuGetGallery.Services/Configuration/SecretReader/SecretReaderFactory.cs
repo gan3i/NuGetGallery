@@ -11,9 +11,12 @@ namespace NuGetGallery.Configuration.SecretReader
     public class SecretReaderFactory : ISecretReaderFactory
     {
         internal const string KeyVaultConfigurationPrefix = "KeyVault.";
+        internal const string UseManagedIdentityConfigurationKey = "UseManagedIdentity";
         internal const string VaultNameConfigurationKey = "VaultName";
         internal const string ClientIdConfigurationKey = "ClientId";
         internal const string CertificateThumbprintConfigurationKey = "CertificateThumbprint";
+        internal const string CertificateStoreLocation = "StoreLocation";
+        internal const string CertificateStoreName = "StoreName";
         private IGalleryConfigurationService _configurationService;
 
         public SecretReaderFactory(IGalleryConfigurationService configurationService)
@@ -44,11 +47,22 @@ namespace NuGetGallery.Configuration.SecretReader
 
             if (!string.IsNullOrEmpty(vaultName))
             {
-                var clientId = _configurationService.ReadRawSetting(ResolveKeyVaultSettingName(ClientIdConfigurationKey));
-                var certificateThumbprint = _configurationService.ReadRawSetting(ResolveKeyVaultSettingName(CertificateThumbprintConfigurationKey));
-                var certificate = CertificateUtility.FindCertificateByThumbprint(StoreName.My, StoreLocation.LocalMachine, certificateThumbprint, true);
+                var useManagedIdentity = GetOptionalKeyVaultBoolSettingValue(UseManagedIdentityConfigurationKey, defaultValue: false);
 
-                var keyVaultConfiguration = new KeyVaultConfiguration(vaultName, clientId, certificate);
+                KeyVaultConfiguration keyVaultConfiguration;
+                if (useManagedIdentity)
+                {
+                    keyVaultConfiguration = new KeyVaultConfiguration(vaultName);
+                }
+                else
+                {
+                    var clientId = _configurationService.ReadRawSetting(ResolveKeyVaultSettingName(ClientIdConfigurationKey));
+                    var certificateThumbprint = _configurationService.ReadRawSetting(ResolveKeyVaultSettingName(CertificateThumbprintConfigurationKey));
+                    var storeName = GetOptionalKeyVaultEnumSettingValue(CertificateStoreName, StoreName.My);
+                    var storeLocation = GetOptionalKeyVaultEnumSettingValue(CertificateStoreLocation, StoreLocation.LocalMachine);
+                    var certificate = CertificateUtility.FindCertificateByThumbprint(storeName, storeLocation, certificateThumbprint, validationRequired: true);
+                    keyVaultConfiguration = new KeyVaultConfiguration(vaultName, clientId, certificate);
+                }
 
                 secretReader = new KeyVaultReader(keyVaultConfiguration);
             }
@@ -58,6 +72,29 @@ namespace NuGetGallery.Configuration.SecretReader
             }
 
             return new CachingSecretReader(secretReader);
+        }
+
+        private bool GetOptionalKeyVaultBoolSettingValue(string settingName, bool defaultValue)
+        {
+            var settingValueStr = _configurationService.ReadRawSetting(ResolveKeyVaultSettingName(settingName));
+            if (!bool.TryParse(settingValueStr, out var settingValue))
+            {
+                return defaultValue;
+            }
+
+            return settingValue;
+        }
+
+        private TEnum GetOptionalKeyVaultEnumSettingValue<TEnum>(string settingName, TEnum defaultValue)
+            where TEnum: struct
+        {
+            var settingValueStr = _configurationService.ReadRawSetting(ResolveKeyVaultSettingName(settingName));
+            if (!Enum.TryParse<TEnum>(settingValueStr, out var settingValue))
+            {
+                return defaultValue;
+            }
+
+            return settingValue;
         }
     }
 }

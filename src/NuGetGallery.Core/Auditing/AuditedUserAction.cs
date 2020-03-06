@@ -9,6 +9,7 @@ namespace NuGetGallery.Auditing
         AddCredential,
         RemoveCredential,
         ExpireCredential,
+        RevokeCredential,
         EditCredential,
         RequestPasswordReset,
         ChangeEmail,
@@ -23,6 +24,7 @@ namespace NuGetGallery.Auditing
         RemoveOrganizationMember,
         UpdateOrganizationMember,
         EnabledMultiFactorAuthentication,
-        DisabledMultiFactorAuthentication
+        DisabledMultiFactorAuthentication,
+        ExternalLoginAttempt,
     }
 }

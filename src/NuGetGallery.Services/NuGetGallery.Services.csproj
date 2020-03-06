@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Import Project="..\..\sign.thirdparty.props" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -9,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>NuGetGallery.Services</RootNamespace>
     <AssemblyName>NuGetGallery.Services</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
@@ -112,10 +113,12 @@
     <Compile Include="Configuration\IGalleryConfigurationService.cs" />
     <Compile Include="Configuration\ILoginDiscontinuationConfiguration.cs" />
     <Compile Include="Configuration\IPackageDeleteConfiguration.cs" />
+    <Compile Include="Configuration\IODataCacheConfiguration.cs" />
     <Compile Include="Configuration\IServiceBusConfiguration.cs" />
     <Compile Include="Configuration\ISymbolsConfiguration.cs" />
     <Compile Include="Configuration\ITyposquattingConfiguration.cs" />
     <Compile Include="Configuration\LoginDiscontinuationConfiguration.cs" />
+    <Compile Include="Configuration\ODataCacheConfiguration.cs" />
     <Compile Include="Configuration\PackageDeleteConfiguration.cs" />
     <Compile Include="Configuration\SecretReader\EmptySecretReaderFactory.cs" />
     <Compile Include="Configuration\SecretReader\SecretReaderFactory.cs" />
@@ -124,9 +127,6 @@
     <Compile Include="Configuration\TyposquattingConfiguration.cs" />
     <Compile Include="Diagnostics\DiagnosticsService.cs" />
     <Compile Include="Diagnostics\ElmahHandleErrorAttribute.cs" />
-    <Compile Include="Diagnostics\PerfCounters.cs" />
-    <Compile Include="Diagnostics\PerfEvent.cs" />
-    <Compile Include="Diagnostics\ProcessPerfEvents.cs" />
     <Compile Include="Diagnostics\SendErrorsToTelemetryAttribute.cs" />
     <Compile Include="Diagnostics\TraceDiagnosticsSource.cs" />
     <Compile Include="Extensions\Base32Encoder.cs" />
@@ -154,12 +154,14 @@
     <Compile Include="PackageManagement\IPackageOwnershipManagementService.cs" />
     <Compile Include="PackageManagement\IPackageService.cs" />
     <Compile Include="PackageManagement\IPackageUpdateService.cs" />
+    <Compile Include="PackageManagement\IPackageVulnerabilityService.cs" />
     <Compile Include="PackageManagement\IReservedNamespaceService.cs" />
     <Compile Include="PackageManagement\PackageDeleteDecision.cs" />
     <Compile Include="PackageManagement\PackageHelper.cs" />
     <Compile Include="PackageManagement\PackageOwnerRequestService.cs" />
     <Compile Include="PackageManagement\PackageOwnershipManagementService.cs" />
     <Compile Include="PackageManagement\PackageService.cs" />
+    <Compile Include="PackageManagement\PackageVulnerabilityService.cs" />
     <Compile Include="PackageManagement\ReservedNamespaceService.cs" />
     <Compile Include="Permissions\ActionRequiringAccountPermissions.cs" />
     <Compile Include="Permissions\ActionRequiringEntityPermissions.cs" />
@@ -190,6 +192,8 @@
     <Compile Include="Security\RequireMinProtocolVersionForPushPolicy.cs" />
     <Compile Include="Security\RequireOrganizationTenantPolicy.cs" />
     <Compile Include="Security\RequirePackageMetadataCompliancePolicy.cs" />
+    <Compile Include="Security\RequirePackageMetadataComplianceUtility.cs" />
+    <Compile Include="Security\RequirePackageMetadataState.cs" />
     <Compile Include="Security\RequirePackageVerifyScopePolicy.cs" />
     <Compile Include="Security\SecurityPolicyAction.cs" />
     <Compile Include="Security\SecurityPolicyHandler.cs" />
@@ -244,7 +248,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="EntityFramework">
-      <Version>6.1.3</Version>
+      <Version>6.4.0-preview3-19553-01</Version>
     </PackageReference>
     <PackageReference Include="MicroBuild.Core">
       <Version>0.3.0</Version>
@@ -252,7 +256,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.ApplicationInsights">
-      <Version>2.3.0</Version>
+      <Version>2.12.0</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.AspNet.Mvc">
       <Version>5.2.3</Version>
@@ -267,22 +271,22 @@
       <Version>1.0.0</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Owin">
-      <Version>3.0.1</Version>
+      <Version>4.1.0</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Owin.Host.SystemWeb">
-      <Version>3.0.1</Version>
+      <Version>4.1.0</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Owin.Security">
-      <Version>3.0.1</Version>
+      <Version>4.1.0</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Owin.Security.Cookies">
-      <Version>3.0.1</Version>
+      <Version>4.1.0</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Owin.Security.MicrosoftAccount">
-      <Version>3.0.1</Version>
+      <Version>4.1.0</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Owin.Security.OpenIdConnect">
-      <Version>3.0.1</Version>
+      <Version>4.1.0</Version>
     </PackageReference>
     <PackageReference Include="NuGet.Packaging">
       <Version>5.0.0-preview1.5665</Version>
@@ -291,10 +295,10 @@
       <Version>5.0.0-preview1.5665</Version>
     </PackageReference>
     <PackageReference Include="NuGet.Services.KeyVault">
-      <Version>2.55.0</Version>
+      <Version>2.68.0</Version>
     </PackageReference>
     <PackageReference Include="NuGet.Services.Logging">
-      <Version>2.55.0</Version>
+      <Version>2.68.0</Version>
     </PackageReference>
     <PackageReference Include="NuGet.StrongName.WebBackgrounder">
       <Version>0.2.0</Version>

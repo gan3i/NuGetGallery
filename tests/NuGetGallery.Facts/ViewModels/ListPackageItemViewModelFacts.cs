@@ -168,33 +168,6 @@ At mei iriure dignissim theophrastus.Meis nostrud te sit, equidem maiorum pri ex
         }
 
         [Fact]
-        public void UseVersionIfLatestAndStableNotSame()
-        {
-            var package = new Package()
-            {
-                Version = "1.0.0",
-                PackageRegistration = new PackageRegistration { Id = "SomeId" },
-                IsLatest = true,
-                IsLatestStable = false
-            };
-
-            var listPackageItemViewModel = CreateListPackageItemViewModel(package);
-            Assert.True(listPackageItemViewModel.UseVersion);
-
-            listPackageItemViewModel.LatestVersion = false;
-            listPackageItemViewModel.LatestStableVersion = true;
-            Assert.True(listPackageItemViewModel.UseVersion);
-
-            listPackageItemViewModel.LatestVersion = false;
-            listPackageItemViewModel.LatestStableVersion = false;
-            Assert.True(listPackageItemViewModel.UseVersion);
-
-            listPackageItemViewModel.LatestVersion = true;
-            listPackageItemViewModel.LatestStableVersion = true;
-            Assert.False(listPackageItemViewModel.UseVersion);
-        }
-
-        [Fact]
         public void UseVersionIfLatestSemVer2AndStableSemVer2NotSame()
         {
             var package = new Package()
@@ -253,7 +226,6 @@ At mei iriure dignissim theophrastus.Meis nostrud te sit, equidem maiorum pri ex
                 {
                     Key = 4,
                     Thumbprint = "D",
-                    Sha1Thumbprint = "E"
                 };
 
                 _packageRegistration = new PackageRegistration()
@@ -301,7 +273,7 @@ At mei iriure dignissim theophrastus.Meis nostrud te sit, equidem maiorum pri ex
 
                 viewModel.CanDisplayPrivateMetadata = true;
 
-                Assert.Equal("Signed with certificate (E)", viewModel.SignatureInformation);
+                Assert.Equal("Signed with certificate (D)", viewModel.SignatureInformation);
             }
 
             [Fact]
@@ -315,7 +287,7 @@ At mei iriure dignissim theophrastus.Meis nostrud te sit, equidem maiorum pri ex
                 var viewModel = CreateListPackageItemViewModel(_package, _user1);
 
                 Assert.True(viewModel.CanDisplayPrivateMetadata);
-                Assert.Equal("Signed with A's certificate (E)", viewModel.SignatureInformation);
+                Assert.Equal("Signed with A's certificate (D)", viewModel.SignatureInformation);
             }
 
             [Fact]
@@ -331,7 +303,7 @@ At mei iriure dignissim theophrastus.Meis nostrud te sit, equidem maiorum pri ex
                 var viewModel = CreateListPackageItemViewModel(_package, _user1);
 
                 Assert.True(viewModel.CanDisplayPrivateMetadata);
-                Assert.Equal("Signed with A and B's certificate (E)", viewModel.SignatureInformation);
+                Assert.Equal("Signed with A and B's certificate (D)", viewModel.SignatureInformation);
             }
 
             [Fact]
@@ -349,7 +321,7 @@ At mei iriure dignissim theophrastus.Meis nostrud te sit, equidem maiorum pri ex
                 var viewModel = CreateListPackageItemViewModel(_package, _user1);
 
                 Assert.True(viewModel.CanDisplayPrivateMetadata);
-                Assert.Equal("Signed with A, B, and C's certificate (E)", viewModel.SignatureInformation);
+                Assert.Equal("Signed with A, B, and C's certificate (D)", viewModel.SignatureInformation);
             }
 
             private void ActivateCertificate(User user)

@@ -487,9 +487,6 @@ For more information, please contact '{2}'.</value>
   <data name="AzureActiveDirectory_RegisterMessage" xml:space="preserve">
     <value>Register with Azure Active Directory</value>
   </data>
-  <data name="WarningSemVer2PackagePushed" xml:space="preserve">
-    <value>This package will only be available to download with SemVer 2.0.0 compatible NuGet clients, such as Visual Studio 2017 (version 15.3) and above or NuGet client 4.3 and above. For more information, see https://go.microsoft.com/fwlink/?linkid=852248.</value>
-  </data>
   <data name="ReservedNamespace_InvalidCharactersInNamespace" xml:space="preserve">
     <value>The namespace '{0}' contains invalid characters. Examples of valid namespaces include 'MyNamespace', 'MyNamespace.' or 'MyNamespace-' etc.</value>
   </data>
@@ -1006,7 +1003,7 @@ The {1} Team</value>
     <value>Unknown error!</value>
   </data>
   <data name="UploadPackage_DeprecatingLicenseUrl" xml:space="preserve">
-    <value>&lt;licenseUrl&gt; element will be deprecated, please consider switching to specifying the license in the package.</value>
+    <value>The &lt;licenseUrl&gt; element is deprecated. Consider using the &lt;license&gt; element instead.</value>
   </data>
   <data name="UploadPackage_DeprecationUrlUsage" xml:space="preserve">
     <value>The license deprecation URL must be used in conjunction with specifying the license in the package.</value>
@@ -1149,5 +1146,11 @@ The {1} Team</value>
   </data>
   <data name="SiteAdminNotLoggedInWithRequiredTenant" xml:space="preserve">
     <value>The site admins are required to sign in with the '{0}' tenant only.</value>
+  </data>
+  <data name="UploadPackage_IconUrlDeprecated" xml:space="preserve">
+    <value>The &lt;iconUrl&gt; element is deprecated. Consider using the &lt;icon&gt; element instead.</value>
+  </data>
+  <data name="TwoFAFeedback_Error" xml:space="preserve">
+    <value>There was an unexpected error when submitting feedback. Please contact NuGet support.</value>
   </data>
 </root>
